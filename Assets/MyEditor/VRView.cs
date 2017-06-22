@@ -183,11 +183,13 @@ sealed class VRView : EditorWindow
 		Camera currentCamera = Camera.main;
 		Camera.SetupCurrent(m_Camera);
 
-		renderTextureLeftEye = new RenderTexture(1500,1500,24);
+		
+		renderTextureLeftEye = new RenderTexture(1520, 1680,24);
 		renderTextureLeftEye.format = RenderTextureFormat.ARGBHalf;
 		renderTextureLeftEye.antiAliasing = 2;
 		renderTextureLeftEye.Create();
 
+		currentCamera.cameraType = CameraType.VR;
 		currentCamera.targetTexture = renderTextureLeftEye;
 		currentCamera.Render();
 
@@ -484,6 +486,12 @@ sealed class VRView : EditorWindow
 		textureBounds[1].uMax = 0.5f + 0.5f * r_right / tanHalfFov.x;
 		textureBounds[1].vMin = 0.5f - 0.5f * r_bottom / tanHalfFov.y;
 		textureBounds[1].vMax = 0.5f - 0.5f * r_top / tanHalfFov.y;
+		
+		// Account for textures being upside-down in Unity.This gave really hard time to figure it out
+		textureBounds[0].vMin = 1.0f - textureBounds[0].vMin;
+		textureBounds[0].vMax = 1.0f - textureBounds[0].vMax;
+		textureBounds[1].vMin = 1.0f - textureBounds[1].vMin;
+		textureBounds[1].vMax = 1.0f - textureBounds[1].vMax;
 
 		// Grow the recommended size to account for the overlapping fov
 		sceneWidth = sceneWidth / Mathf.Max(textureBounds[0].uMax - textureBounds[0].uMin, textureBounds[1].uMax - textureBounds[1].uMin);
@@ -491,7 +499,9 @@ sealed class VRView : EditorWindow
 
 		float aspect = tanHalfFov.x / tanHalfFov.y;
 		float fieldOfView = 2.0f * Mathf.Atan(tanHalfFov.y) * Mathf.Rad2Deg;
-
+		Camera.main.aspect = aspect;
+		Camera.main.fieldOfView = fieldOfView;
+		
 	}
 
 	public void VR_render()
@@ -518,6 +528,14 @@ sealed class VRView : EditorWindow
 				OpenVR.Compositor.Submit(EVREye.Eye_Left, ref VR_textureLeftEye, ref textureBounds[0], EVRSubmitFlags.Submit_Default);
 				OpenVR.Compositor.Submit(EVREye.Eye_Right, ref VR_textureRightEye, ref textureBounds[1], EVRSubmitFlags.Submit_Default);
 				OpenVR.Compositor.WaitGetPoses(renderPoseArray, gamePoseArray);
+				//OpenVR.Compositor.GetLastPoseForTrackedDeviceIndex(0,ref renderPoseArray[0],ref gamePoseArray[0]);
+
+				SteamVR_Utils.RigidTransform pose =new SteamVR_Utils.RigidTransform(renderPoseArray[0].mDeviceToAbsoluteTracking);
+
+				Camera.main.transform.localPosition = pose.pos;
+				Camera.main.transform.localRotation = pose.rot;
+				
+			
 			}
 		}
 	}
