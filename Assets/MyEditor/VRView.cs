@@ -183,20 +183,24 @@ sealed class VRView : EditorWindow
 		// Disable other views to increase rendering performance for EditorVR
 		SetOtherViewsEnabled(false);
 
-		LeftEye = GameObject.Find("LeftEye");		
+		LeftEye = EditorUtility.CreateGameObjectWithHideFlags("VRCameraLeftEye", HideFlags.HideAndDontSave, typeof(Camera));
 		leftEyeCam = LeftEye.GetComponent<Camera>();
 		leftEyeCam.cameraType = CameraType.VR;
 		leftEyeCam.nearClipPlane = 0.01f;
 		leftEyeCam.farClipPlane = 1000f;
+		leftEyeCam.transform.position = Vector3.zero;
+		leftEyeCam.transform.rotation = Quaternion.identity;
+		
 
-		RightEye = GameObject.Find("RightEye");
+		RightEye = EditorUtility.CreateGameObjectWithHideFlags("VRCameraRightEye", HideFlags.HideAndDontSave, typeof(Camera));
 		rightEyeCam = RightEye.GetComponent<Camera>();
 		rightEyeCam.cameraType = CameraType.VR;
 		rightEyeCam.nearClipPlane = 0.01f;
 		rightEyeCam.farClipPlane = 1000f;
-		// VRSettings.enabled latches the reference pose for the current camera
-		//Camera currentCamera = Camera.main;
-		Camera.SetupCurrent(m_Camera);
+
+		rightEyeCam.transform.position = Vector3.zero;
+		rightEyeCam.transform.rotation = Quaternion.identity;
+		
 				
 
 		//currentCamera.cameraType = CameraType.VR;
@@ -318,9 +322,9 @@ sealed class VRView : EditorWindow
 		rect.height = position.height;
 		guiRect = rect;
 		var cameraRect = EditorGUIUtility.PointsToPixels(guiRect);
-		PrepareCameraTargetTexture(cameraRect);
-
-		m_Camera.cullingMask = m_CullingMask.HasValue ? m_CullingMask.Value.value : UnityEditor.Tools.visibleLayers;
+		//PrepareCameraTargetTexture(cameraRect);
+		m_TargetTexture = leftEyeCam.targetTexture;
+		leftEyeCam.cullingMask = m_CullingMask.HasValue ? m_CullingMask.Value.value : UnityEditor.Tools.visibleLayers;
 
 		DoDrawCamera(guiRect);
 
@@ -362,11 +366,11 @@ sealed class VRView : EditorWindow
 
 	void DoDrawCamera(Rect rect)
 	{
-		if (!m_Camera.gameObject.activeInHierarchy)
+		if (!leftEyeCam.gameObject.activeInHierarchy)
 			return;
 
 
-		//UnityEditor.Handles.DrawCamera(rect, m_Camera, m_RenderMode);
+		UnityEditor.Handles.DrawCamera(rect, leftEyeCam, m_RenderMode);
 		if (Event.current.type == EventType.Repaint)
 		{
 			GUI.matrix = Matrix4x4.identity; // Need to push GUI matrix back to GPU after camera rendering
@@ -385,6 +389,7 @@ sealed class VRView : EditorWindow
 
 	private void Update()
 	{
+
 		// If code is compiling, then we need to clean up the window resources before classes get re-initialized
 		if (EditorApplication.isCompiling)
 		{
@@ -534,7 +539,9 @@ sealed class VRView : EditorWindow
 	public void VR_render()
 	{
 
-		
+		leftEyeCam.Render();
+		rightEyeCam.Render();
+
 		VR_textureLeftEye = new Texture_t();
 		VR_textureRightEye = new Texture_t();
 
