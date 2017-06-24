@@ -38,13 +38,17 @@ sealed class VRView : EditorWindow
 	TrackedDevicePose_t[] renderPoseArray = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
 	TrackedDevicePose_t[] gamePoseArray = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
 	VRTextureBounds_t[] textureBounds;
-	Texture_t VR_textureLeftEye, VR_textureRightEye;
-	RenderTexture renderTextureLeftEye;
-	RenderTexture renderTextureRightEye;
+	Texture_t VR_textureLeftEye, VR_textureRightEye;	
 
 	CVRSystem hmd;
 
 
+	GameObject LeftEye;
+	GameObject RightEye;
+	RenderTexture renderTextureLeftEye;
+	RenderTexture renderTextureRightEye;
+	Camera leftEyeCam;
+	Camera rightEyeCam;
 
 	Transform m_CameraRig;
 
@@ -179,30 +183,49 @@ sealed class VRView : EditorWindow
 		// Disable other views to increase rendering performance for EditorVR
 		SetOtherViewsEnabled(false);
 
-		// VRSettings.enabled latches the reference pose for the current camera
-		Camera currentCamera = Camera.main;
-		Camera.SetupCurrent(m_Camera);
+		LeftEye = GameObject.Find("LeftEye");		
+		leftEyeCam = LeftEye.GetComponent<Camera>();
+		leftEyeCam.cameraType = CameraType.VR;
+		leftEyeCam.nearClipPlane = 0.01f;
+		leftEyeCam.farClipPlane = 1000f;
 
-		
-		renderTextureLeftEye = new RenderTexture(1520, 1680,24);
-		renderTextureLeftEye.format = RenderTextureFormat.ARGBHalf;
+		RightEye = GameObject.Find("RightEye");
+		rightEyeCam = RightEye.GetComponent<Camera>();
+		rightEyeCam.cameraType = CameraType.VR;
+		rightEyeCam.nearClipPlane = 0.01f;
+		rightEyeCam.farClipPlane = 1000f;
+		// VRSettings.enabled latches the reference pose for the current camera
+		//Camera currentCamera = Camera.main;
+		Camera.SetupCurrent(m_Camera);
+				
+
+		//currentCamera.cameraType = CameraType.VR;
+		//Create left eye texture
+		renderTextureLeftEye = new RenderTexture(1520, 1680, 24);
+		renderTextureLeftEye.format = RenderTextureFormat.ARGB32;
 		renderTextureLeftEye.antiAliasing = 2;
 		renderTextureLeftEye.Create();
 
-		currentCamera.cameraType = CameraType.VR;
-		currentCamera.targetTexture = renderTextureLeftEye;
-		currentCamera.Render();
+		leftEyeCam.stereoTargetEye = StereoTargetEyeMask.Left;
+		leftEyeCam.targetTexture = renderTextureLeftEye;
+		leftEyeCam.Render();
 
-		renderTextureLeftEye = currentCamera.targetTexture;
+		//Create right eye texture
+		renderTextureRightEye = new RenderTexture(1520, 1680, 24);
+		renderTextureRightEye.format = RenderTextureFormat.ARGB32;
+		renderTextureRightEye.antiAliasing = 2;
+		renderTextureRightEye.Create();
 
-	
 
-		renderTextureRightEye = currentCamera.targetTexture;
+		rightEyeCam.stereoTargetEye = StereoTargetEyeMask.Right;
+		rightEyeCam.targetTexture = renderTextureRightEye;
+		rightEyeCam.Render();
+
+		//Initialize VR
 		VR_init();
-
+		
 		InputTracking.Recenter();
-
-
+		
 
 		//if (viewEnabled != null)
 		//viewEnabled();
@@ -467,6 +490,7 @@ sealed class VRView : EditorWindow
 
 		float l_left = 0.0f, l_right = 0.0f, l_top = 0.0f, l_bottom = 0.0f;
 		hmd.GetProjectionRaw(EVREye.Eye_Left, ref l_left, ref l_right, ref l_top, ref l_bottom);
+		
 
 		float r_left = 0.0f, r_right = 0.0f, r_top = 0.0f, r_bottom = 0.0f;
 		hmd.GetProjectionRaw(EVREye.Eye_Right, ref r_left, ref r_right, ref r_top, ref r_bottom);
@@ -499,17 +523,21 @@ sealed class VRView : EditorWindow
 
 		float aspect = tanHalfFov.x / tanHalfFov.y;
 		float fieldOfView = 2.0f * Mathf.Atan(tanHalfFov.y) * Mathf.Rad2Deg;
-		Camera.main.aspect = aspect;
-		Camera.main.fieldOfView = fieldOfView;
+		leftEyeCam.aspect = aspect;
+		rightEyeCam.aspect = aspect;
+		leftEyeCam.fieldOfView = fieldOfView;
+		rightEyeCam.fieldOfView = fieldOfView;
+		
 		
 	}
 
 	public void VR_render()
 	{
-		
 
+		
 		VR_textureLeftEye = new Texture_t();
 		VR_textureRightEye = new Texture_t();
+
 		VR_textureLeftEye.handle = renderTextureLeftEye.GetNativeTexturePtr();
 		VR_textureRightEye.handle = renderTextureRightEye.GetNativeTexturePtr();
 
@@ -528,14 +556,16 @@ sealed class VRView : EditorWindow
 				OpenVR.Compositor.Submit(EVREye.Eye_Left, ref VR_textureLeftEye, ref textureBounds[0], EVRSubmitFlags.Submit_Default);
 				OpenVR.Compositor.Submit(EVREye.Eye_Right, ref VR_textureRightEye, ref textureBounds[1], EVRSubmitFlags.Submit_Default);
 				OpenVR.Compositor.WaitGetPoses(renderPoseArray, gamePoseArray);
-				//OpenVR.Compositor.GetLastPoseForTrackedDeviceIndex(0,ref renderPoseArray[0],ref gamePoseArray[0]);
 
-				SteamVR_Utils.RigidTransform pose =new SteamVR_Utils.RigidTransform(renderPoseArray[0].mDeviceToAbsoluteTracking);
-
-				Camera.main.transform.localPosition = pose.pos;
-				Camera.main.transform.localRotation = pose.rot;
+				SteamVR_Utils.RigidTransform pose_head =new SteamVR_Utils.RigidTransform(renderPoseArray[0].mDeviceToAbsoluteTracking);
+				SteamVR_Utils.RigidTransform pose_left_to_head =new SteamVR_Utils.RigidTransform(hmd.GetEyeToHeadTransform(EVREye.Eye_Left));
+				SteamVR_Utils.RigidTransform pose_right_to_head = new SteamVR_Utils.RigidTransform(hmd.GetEyeToHeadTransform(EVREye.Eye_Right));
 				
-			
+				leftEyeCam.transform.localPosition = pose_head.TransformPoint(pose_left_to_head.pos);
+				leftEyeCam.transform.localRotation = pose_head.rot * pose_left_to_head.rot;
+
+				rightEyeCam.transform.localPosition = pose_head.TransformPoint(pose_right_to_head.pos);
+				rightEyeCam.transform.localRotation = pose_head.rot * pose_right_to_head.rot;
 			}
 		}
 	}
