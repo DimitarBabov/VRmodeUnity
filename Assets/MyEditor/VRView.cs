@@ -15,23 +15,9 @@ using UnityObject = UnityEngine.Object;
 
 [InitializeOnLoad]
 sealed class VRView : EditorWindow
-{
-	const string k_ShowDeviceView = "VRView.ShowDeviceView";
-	const string k_UseCustomPreviewCamera = "VRView.UseCustomPreviewCamera";
-	const string k_LaunchOnExitPlaymode = "VRView.LaunchOnExitPlaymode";
+{	
 
-	DrawCameraMode m_RenderMode = DrawCameraMode.Textured;
-
-
-
-	Camera m_CustomPreviewCamera;
-
-	[NonSerialized]
-	Camera m_Camera;
-
-	LayerMask? m_CullingMask;
-	RenderTexture m_TargetTexture;
-	bool m_ShowDeviceView;
+	
 	EditorWindow[] m_EditorWindows;
 	static VRView s_ActiveView;
 	//OpenVR stuff
@@ -66,55 +52,16 @@ sealed class VRView : EditorWindow
 		}
 	}
 
-	public static Camera viewerCamera
-	{
-		get
-		{
-			if (s_ActiveView)
-				return s_ActiveView.m_Camera;
-
-			return null;
-		}
-	}
+	
 
 	public static VRView activeView
 	{
 		get { return s_ActiveView; }
-	}
+	}	
 
-	public static bool showDeviceView
-	{
-		get { return s_ActiveView && s_ActiveView.m_ShowDeviceView; }
-	}
-
-	public static LayerMask cullingMask
-	{
-		set
-		{
-			if (s_ActiveView)
-				s_ActiveView.m_CullingMask = value;
-		}
-	}
-	// To allow for alternate previews (e.g. smoothing)
-	public static Camera customPreviewCamera
-	{
-		set
-		{
-			if (s_ActiveView)
-				s_ActiveView.m_CustomPreviewCamera = value;
-		}
-		get
-		{
-			return s_ActiveView && s_ActiveView.m_UseCustomPreviewCamera ?
-				s_ActiveView.m_CustomPreviewCamera : null;
-		}
-	}
-
-		public static event Action viewEnabled;
-		public static event Action viewDisabled;
-		public static event Action<EditorWindow> beforeOnGUI;
-		public static event Action<EditorWindow> afterOnGUI;
-		public static event Action<bool> hmdStatusChange;
+	public static event Action<EditorWindow> beforeOnGUI;
+	
+	public static event Action<bool> hmdStatusChange;
 
 	public Rect guiRect { get; private set; }
 
@@ -123,22 +70,12 @@ sealed class VRView : EditorWindow
 		return GetWindow<VRView>(true);
 	}
 
-	public static Coroutine StartCoroutine(IEnumerator routine)
-	{
-		if (s_ActiveView && s_ActiveView.m_CameraRig)
-		{
-			var mb = s_ActiveView.m_CameraRig.GetComponent<EditorMonoBehaviour>();
-			return mb.StartCoroutine(routine);
-		}
-
-		return null;
-	}
 
 	// Life cycle management across playmode switches is an odd beast indeed, and there is a need to reliably relaunch
 	// EditorVR after we switch back out of playmode (assuming the view was visible before a playmode switch). So,
 	// we watch until playmode is done and then relaunch.  
 	static void ReopenOnExitPlaymode()
-	{
+	{/*
 		bool launch = EditorPrefs.GetBool(k_LaunchOnExitPlaymode, false);
 		if (!launch || !EditorApplication.isPlaying)
 		{
@@ -147,6 +84,7 @@ sealed class VRView : EditorWindow
 			if (launch)
 				GetWindow<VRView>();
 		}
+		*/
 	}
 
 	public void OnEnable()
@@ -155,34 +93,7 @@ sealed class VRView : EditorWindow
 
 		Assert.IsNull(s_ActiveView, "Only one EditorVR should be active");
 
-		autoRepaintOnSceneChange = true;
-		s_ActiveView = this;
-
-		GameObject cameraGO = EditorUtility.CreateGameObjectWithHideFlags("VRCamera", HideFlags.HideAndDontSave, typeof(Camera));
-		m_Camera = cameraGO.GetComponent<Camera>();
-		m_Camera.useOcclusionCulling = false;
-		m_Camera.enabled = false;
-		m_Camera.cameraType = CameraType.VR;
-
-		GameObject rigGO = EditorUtility.CreateGameObjectWithHideFlags("VRCameraRig", HideFlags.HideAndDontSave, typeof(EditorMonoBehaviour));
-		m_CameraRig = rigGO.transform;
-		m_Camera.transform.parent = m_CameraRig;
-		m_Camera.nearClipPlane = 0.01f;
-		m_Camera.farClipPlane = 1000f;
-
-		// Generally, we want to be at a standing height, so default to that
-		const float kHeadHeight = 1.7f;
-		Vector3 position = m_CameraRig.position;
-		position.y = kHeadHeight;
-		m_CameraRig.position = position;
-		m_CameraRig.rotation = Quaternion.identity;
-
-		m_ShowDeviceView = EditorPrefs.GetBool(k_ShowDeviceView, false);
-		m_UseCustomPreviewCamera = EditorPrefs.GetBool(k_UseCustomPreviewCamera, false);
-
-		// Disable other views to increase rendering performance for EditorVR
-		SetOtherViewsEnabled(false);
-
+	
 		LeftEye = EditorUtility.CreateGameObjectWithHideFlags("VRCameraLeftEye", HideFlags.HideAndDontSave, typeof(Camera));
 		leftEyeCam = LeftEye.GetComponent<Camera>();
 		leftEyeCam.cameraType = CameraType.VR;
@@ -226,163 +137,48 @@ sealed class VRView : EditorWindow
 		rightEyeCam.Render();
 
 		//Initialize VR
-		VR_init();
+		VR_init();		
 		
-		InputTracking.Recenter();
-		
-
-		//if (viewEnabled != null)
-		//viewEnabled();
 	}
 
 	public void OnDisable()
-	{
-		if (viewDisabled != null)
-			viewDisabled();
+	{		
 
 		EditorApplication.playmodeStateChanged -= OnPlaymodeStateChanged;
 
 		//VRSettings.enabled = false;
 		OpenVR.Shutdown();
 
-		EditorPrefs.SetBool(k_ShowDeviceView, m_ShowDeviceView);
-		EditorPrefs.SetBool(k_UseCustomPreviewCamera, m_UseCustomPreviewCamera);
+		
 
 		SetOtherViewsEnabled(true);
 
 		if (m_CameraRig)
 			DestroyImmediate(m_CameraRig.gameObject, true);
 
-		Assert.IsNotNull(s_ActiveView, "EditorVR should have an active view");
-		s_ActiveView = null;
 	}
 
 	void UpdateCameraTransform()
 	{
-		var cameraTransform = m_Camera.transform;
-		cameraTransform.localPosition = InputTracking.GetLocalPosition(VRNode.Head);
-		cameraTransform.localRotation = InputTracking.GetLocalRotation(VRNode.Head);
+		
 	}
 
-	public void CreateCameraTargetTexture(ref RenderTexture renderTexture, Rect cameraRect, bool hdr)
-	{
-		bool useSRGBTarget = QualitySettings.activeColorSpace == ColorSpace.Linear;
-
-		int msaa = Mathf.Max(1, QualitySettings.antiAliasing);
-
-		RenderTextureFormat format = hdr ? RenderTextureFormat.ARGBHalf : RenderTextureFormat.ARGB32;
-		if (renderTexture != null)
-		{
-			bool matchingSRGB = renderTexture != null && useSRGBTarget == renderTexture.sRGB;
-
-			if (renderTexture.format != format || renderTexture.antiAliasing != msaa || !matchingSRGB)
-			{
-				DestroyImmediate(renderTexture);
-				renderTexture = null;
-			}
-		}
-
-		Rect actualCameraRect = cameraRect;
-		int width = (int)actualCameraRect.width;
-		int height = (int)actualCameraRect.height;
-
-		if (renderTexture == null)
-		{
-			renderTexture = new RenderTexture(0, 0, 24, format);
-			renderTexture.name = "Scene RT";
-			renderTexture.antiAliasing = msaa;
-			renderTexture.hideFlags = HideFlags.HideAndDontSave;
-		}
-		if (renderTexture.width != width || renderTexture.height != height)
-		{
-			renderTexture.Release();
-			renderTexture.width = width;
-			renderTexture.height = height;
-		}
-		renderTexture.Create();
-	}
-
-	void PrepareCameraTargetTexture(Rect cameraRect)
-	{
-		// Always render camera into a RT
-		CreateCameraTargetTexture(ref m_TargetTexture, cameraRect, false);
-		m_Camera.targetTexture = m_ShowDeviceView ? m_TargetTexture : null;
-		VRSettings.showDeviceView = !customPreviewCamera && m_ShowDeviceView;
-	}
+	
 
 	void OnGUI()
 	{
-		if (beforeOnGUI != null)
-			beforeOnGUI(this);
+		
 
-		var rect = guiRect;
-		rect.x = 0;
-		rect.y = 0;
-		rect.width = position.width;
-		rect.height = position.height;
-		guiRect = rect;
-		var cameraRect = EditorGUIUtility.PointsToPixels(guiRect);
-		//PrepareCameraTargetTexture(cameraRect);
-		m_TargetTexture = leftEyeCam.targetTexture;
-		leftEyeCam.cullingMask = m_CullingMask.HasValue ? m_CullingMask.Value.value : UnityEditor.Tools.visibleLayers;
-
-		DoDrawCamera(guiRect);
-
-		Event e = Event.current;
-		if (m_ShowDeviceView)
-		{
-			if (e.type == EventType.Repaint)
-			{
-				GL.sRGBWrite = (QualitySettings.activeColorSpace == ColorSpace.Linear);
-				var renderTexture = customPreviewCamera && customPreviewCamera.targetTexture ? customPreviewCamera.targetTexture : m_TargetTexture;
-				GUI.BeginGroup(guiRect);
-				GUI.DrawTexture(guiRect, renderTexture, ScaleMode.StretchToFill, false);
-				GUI.EndGroup();
-				GL.sRGBWrite = false;
-			}
-		}
-
-		GUILayout.BeginArea(guiRect);
-		{
-			if (GUILayout.Button("Toggle Device View", EditorStyles.toolbarButton))
-				m_ShowDeviceView = !m_ShowDeviceView;
-
-			if (m_CustomPreviewCamera)
-			{
-				GUILayout.FlexibleSpace();
-				GUILayout.BeginHorizontal();
-				{
-					GUILayout.FlexibleSpace();
-					m_UseCustomPreviewCamera = GUILayout.Toggle(m_UseCustomPreviewCamera, "Use Presentation Camera");
-				}
-				GUILayout.EndHorizontal();
-			}
-		}
-		GUILayout.EndArea();
-
-		if (afterOnGUI != null)
-			afterOnGUI(this);
+		
 	}
 
-	void DoDrawCamera(Rect rect)
-	{
-		if (!leftEyeCam.gameObject.activeInHierarchy)
-			return;
-
-
-		UnityEditor.Handles.DrawCamera(rect, leftEyeCam, m_RenderMode);
-		if (Event.current.type == EventType.Repaint)
-		{
-			GUI.matrix = Matrix4x4.identity; // Need to push GUI matrix back to GPU after camera rendering
-			RenderTexture.active = null; // Clean up after DrawCamera
-		}
-	}
+	
 
 	private void OnPlaymodeStateChanged()
 	{
 		if (EditorApplication.isPlayingOrWillChangePlaymode)
 		{
-			EditorPrefs.SetBool(k_LaunchOnExitPlaymode, true);
+			
 			Close();
 		}
 	}
@@ -397,10 +193,7 @@ sealed class VRView : EditorWindow
 			return;
 		}
 
-		// Force the window to repaint every tick, since we need live updating
-		// This also allows scripts with [ExecuteInEditMode] to run
-
-		//EditorApplication.SetSceneRepaintDirty();
+	
 
 		// Our camera is disabled, so it doesn't get automatically updated to HMD values until it renders
 		UpdateCameraTransform();
@@ -575,6 +368,19 @@ sealed class VRView : EditorWindow
 				rightEyeCam.transform.localRotation = pose_head.rot * pose_right_to_head.rot;
 			}
 		}
+	}
+
+	[MenuItem("Window/EditorVR %e", false)]
+	static void ShowEditorVR()
+	{
+		// Using a utility window improves performance by saving from the overhead of DockArea.OnGUI()
+		EditorWindow.GetWindow<VRView>(true, "EditorVR", true);
+	}
+
+	[MenuItem("Window/EditorVR %e", true)]
+	static bool ShouldShowEditorVR()
+	{
+		return PlayerSettings.virtualRealitySupported;
 	}
 }
 
