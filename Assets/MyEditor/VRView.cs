@@ -1,9 +1,8 @@
-//#if UNITY_EDITOR  
+#if UNITY_EDITOR  
 using System;
 using UnityEngine;
 using UnityEngine.Assertions;
 using System.Collections;
-//using UnityEditor.Experimental.EditorVR.Helpers;
 using System.Reflection;
 using UnityEngine.VR;
 #if ENABLE_STEAMVR_INPUT
@@ -14,19 +13,26 @@ using UnityObject = UnityEngine.Object;
 
 
 [InitializeOnLoad]
+[ExecuteInEditMode]
 sealed class VRView : EditorWindow
-{	
+{
+	const string k_ShowDeviceView = "VRView.ShowDeviceView";
+	const string k_UseCustomPreviewCamera = "VRView.UseCustomPreviewCamera";
+	const string k_LaunchOnExitPlaymode = "VRView.LaunchOnExitPlaymode";
+	bool m_ShowDeviceView;
 
-	
 	EditorWindow[] m_EditorWindows;
 	static VRView s_ActiveView;
 	//OpenVR stuff
+	CVRSystem hmd;
+	CVRCompositor compositor;
+
 	TrackedDevicePose_t[] renderPoseArray = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
 	TrackedDevicePose_t[] gamePoseArray = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
 	VRTextureBounds_t[] textureBounds;
 	Texture_t VR_textureLeftEye, VR_textureRightEye;	
 
-	CVRSystem hmd;
+	
 
 
 	GameObject LeftEye;
@@ -57,8 +63,10 @@ sealed class VRView : EditorWindow
 	public static VRView activeView
 	{
 		get { return s_ActiveView; }
-	}	
+	}
 
+	public static event Action viewEnabled;
+	public static event Action viewDisabled;
 	public static event Action<EditorWindow> beforeOnGUI;
 	
 	public static event Action<bool> hmdStatusChange;
@@ -71,11 +79,9 @@ sealed class VRView : EditorWindow
 	}
 
 
-	// Life cycle management across playmode switches is an odd beast indeed, and there is a need to reliably relaunch
-	// EditorVR after we switch back out of playmode (assuming the view was visible before a playmode switch). So,
-	// we watch until playmode is done and then relaunch.  
+	
 	static void ReopenOnExitPlaymode()
-	{/*
+	{
 		bool launch = EditorPrefs.GetBool(k_LaunchOnExitPlaymode, false);
 		if (!launch || !EditorApplication.isPlaying)
 		{
@@ -84,8 +90,10 @@ sealed class VRView : EditorWindow
 			if (launch)
 				GetWindow<VRView>();
 		}
-		*/
+		
 	}
+
+
 
 	public void OnEnable()
 	{
@@ -96,32 +104,22 @@ sealed class VRView : EditorWindow
 	
 		LeftEye = EditorUtility.CreateGameObjectWithHideFlags("VRCameraLeftEye", HideFlags.HideAndDontSave, typeof(Camera));
 		leftEyeCam = LeftEye.GetComponent<Camera>();
-		leftEyeCam.cameraType = CameraType.VR;
+		leftEyeCam.cameraType = CameraType.SceneView;
 		leftEyeCam.nearClipPlane = 0.01f;
 		leftEyeCam.farClipPlane = 1000f;
-		leftEyeCam.transform.position = Vector3.zero;
-		leftEyeCam.transform.rotation = Quaternion.identity;
-		
 
 		RightEye = EditorUtility.CreateGameObjectWithHideFlags("VRCameraRightEye", HideFlags.HideAndDontSave, typeof(Camera));
 		rightEyeCam = RightEye.GetComponent<Camera>();
-		rightEyeCam.cameraType = CameraType.VR;
+		rightEyeCam.cameraType = CameraType.SceneView;
 		rightEyeCam.nearClipPlane = 0.01f;
 		rightEyeCam.farClipPlane = 1000f;
-
-		rightEyeCam.transform.position = Vector3.zero;
-		rightEyeCam.transform.rotation = Quaternion.identity;
 		
-				
-
-		//currentCamera.cameraType = CameraType.VR;
 		//Create left eye texture
 		renderTextureLeftEye = new RenderTexture(1520, 1680, 24);
 		renderTextureLeftEye.format = RenderTextureFormat.ARGB32;
 		renderTextureLeftEye.antiAliasing = 2;
 		renderTextureLeftEye.Create();
-
-		leftEyeCam.stereoTargetEye = StereoTargetEyeMask.Left;
+		
 		leftEyeCam.targetTexture = renderTextureLeftEye;
 		leftEyeCam.Render();
 
@@ -131,8 +129,6 @@ sealed class VRView : EditorWindow
 		renderTextureRightEye.antiAliasing = 2;
 		renderTextureRightEye.Create();
 
-
-		rightEyeCam.stereoTargetEye = StereoTargetEyeMask.Right;
 		rightEyeCam.targetTexture = renderTextureRightEye;
 		rightEyeCam.Render();
 
@@ -142,25 +138,38 @@ sealed class VRView : EditorWindow
 	}
 
 	public void OnDisable()
-	{		
+	{
+		if (viewDisabled != null)
+			viewDisabled();
 
 		EditorApplication.playmodeStateChanged -= OnPlaymodeStateChanged;
-
-		//VRSettings.enabled = false;
 		OpenVR.Shutdown();
 
-		
-
-		SetOtherViewsEnabled(true);
+		EditorPrefs.SetBool(k_ShowDeviceView, m_ShowDeviceView);
 
 		if (m_CameraRig)
 			DestroyImmediate(m_CameraRig.gameObject, true);
+
+		if (LeftEye)
+			DestroyImmediate(LeftEye, true);
+
+		if (RightEye)
+			DestroyImmediate(RightEye, true);
 
 	}
 
 	void UpdateCameraTransform()
 	{
-		
+		SteamVR_Utils.RigidTransform pose_head = new SteamVR_Utils.RigidTransform(renderPoseArray[0].mDeviceToAbsoluteTracking);
+		SteamVR_Utils.RigidTransform pose_left_to_head = new SteamVR_Utils.RigidTransform(hmd.GetEyeToHeadTransform(EVREye.Eye_Left));
+		SteamVR_Utils.RigidTransform pose_right_to_head = new SteamVR_Utils.RigidTransform(hmd.GetEyeToHeadTransform(EVREye.Eye_Right));
+
+		leftEyeCam.transform.localPosition = pose_head.TransformPoint(pose_left_to_head.pos);
+		leftEyeCam.transform.localRotation = pose_head.rot * pose_left_to_head.rot;
+
+		rightEyeCam.transform.localPosition = pose_head.TransformPoint(pose_right_to_head.pos);
+		rightEyeCam.transform.localRotation = pose_head.rot * pose_right_to_head.rot;
+
 	}
 
 	
@@ -177,8 +186,8 @@ sealed class VRView : EditorWindow
 	private void OnPlaymodeStateChanged()
 	{
 		if (EditorApplication.isPlayingOrWillChangePlaymode)
-		{
-			
+		{			
+			EditorPrefs.SetBool(k_LaunchOnExitPlaymode, true);
 			Close();
 		}
 	}
@@ -202,7 +211,6 @@ sealed class VRView : EditorWindow
 
 		UpdateHMDStatus();
 
-		SetSceneViewsAutoRepaint(false);
 	}
 
 	void UpdateHMDStatus()
@@ -230,55 +238,19 @@ sealed class VRView : EditorWindow
 #endif
 		return true;
 	}
-
-	void SetGameViewsAutoRepaint(bool enabled)
-	{
-		var asm = Assembly.GetAssembly(typeof(UnityEditor.EditorWindow));
-		var type = asm.GetType("UnityEditor.GameView");
-		SetAutoRepaintOnSceneChanged(type, enabled);
-	}
-
-	void SetSceneViewsAutoRepaint(bool enabled)
-	{
-		SetAutoRepaintOnSceneChanged(typeof(SceneView), enabled);
-	}
-
-	void SetOtherViewsEnabled(bool enabled)
-	{
-		SetGameViewsAutoRepaint(enabled);
-		SetSceneViewsAutoRepaint(enabled);
-	}
-
-	void SetAutoRepaintOnSceneChanged(Type viewType, bool enabled)
-	{
-		if (m_EditorWindows == null)
-			m_EditorWindows = Resources.FindObjectsOfTypeAll<EditorWindow>();
-
-		var windowCount = m_EditorWindows.Length;
-		var mouseOverWindow = EditorWindow.mouseOverWindow;
-		for (int i = 0; i < windowCount; i++)
-		{
-			var window = m_EditorWindows[i];
-			if (window.GetType() == viewType)
-				window.autoRepaintOnSceneChange = enabled || (window == mouseOverWindow);
-		}
-
-
-	}
-
-
-
+	
 	public void VR_init()
 	{
 		renderPoseArray = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
 		gamePoseArray = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
+		VR_textureLeftEye = new Texture_t();
+		VR_textureRightEye = new Texture_t();
 
 		var error = EVRInitError.None;
 		hmd = OpenVR.Init(ref error, EVRApplicationType.VRApplication_Scene);
 		//Debug.Log("Connected to " + hmd_TrackingSystemName + ":" + hmd_SerialNumber);
 
-		var compositor = OpenVR.Compositor;
-		var overlay = OpenVR.Overlay;
+		compositor = OpenVR.Compositor;
 
 		// Setup render values
 		uint w = 0, h = 0;
@@ -309,7 +281,7 @@ sealed class VRView : EditorWindow
 		textureBounds[1].vMin = 0.5f - 0.5f * r_bottom / tanHalfFov.y;
 		textureBounds[1].vMax = 0.5f - 0.5f * r_top / tanHalfFov.y;
 		
-		// Account for textures being upside-down in Unity.This gave really hard time to figure it out
+		// Account for textures being upside-down in Unity.This gave me really hard time to figure it out
 		textureBounds[0].vMin = 1.0f - textureBounds[0].vMin;
 		textureBounds[0].vMax = 1.0f - textureBounds[0].vMax;
 		textureBounds[1].vMin = 1.0f - textureBounds[1].vMin;
@@ -325,18 +297,18 @@ sealed class VRView : EditorWindow
 		rightEyeCam.aspect = aspect;
 		leftEyeCam.fieldOfView = fieldOfView;
 		rightEyeCam.fieldOfView = fieldOfView;
-		
-		
+
 	}
 
 	public void VR_render()
 	{
+		if (Application.isPlaying)
+			return;
+		
 
 		leftEyeCam.Render();
 		rightEyeCam.Render();
 
-		VR_textureLeftEye = new Texture_t();
-		VR_textureRightEye = new Texture_t();
 
 		VR_textureLeftEye.handle = renderTextureLeftEye.GetNativeTexturePtr();
 		VR_textureRightEye.handle = renderTextureRightEye.GetNativeTexturePtr();
@@ -349,38 +321,32 @@ sealed class VRView : EditorWindow
 		if (!SteamVR.active && !SteamVR.usingNativeSupport)
 		{
 
-			if (OpenVR.Compositor.CanRenderScene())
+			if (compositor.CanRenderScene())
 			{
 
-			
-				OpenVR.Compositor.Submit(EVREye.Eye_Left, ref VR_textureLeftEye, ref textureBounds[0], EVRSubmitFlags.Submit_Default);
-				OpenVR.Compositor.Submit(EVREye.Eye_Right, ref VR_textureRightEye, ref textureBounds[1], EVRSubmitFlags.Submit_Default);
-				OpenVR.Compositor.WaitGetPoses(renderPoseArray, gamePoseArray);
 
-				SteamVR_Utils.RigidTransform pose_head =new SteamVR_Utils.RigidTransform(renderPoseArray[0].mDeviceToAbsoluteTracking);
-				SteamVR_Utils.RigidTransform pose_left_to_head =new SteamVR_Utils.RigidTransform(hmd.GetEyeToHeadTransform(EVREye.Eye_Left));
-				SteamVR_Utils.RigidTransform pose_right_to_head = new SteamVR_Utils.RigidTransform(hmd.GetEyeToHeadTransform(EVREye.Eye_Right));
+				compositor.Submit(EVREye.Eye_Left, ref VR_textureLeftEye, ref textureBounds[0], EVRSubmitFlags.Submit_Default);
+				compositor.Submit(EVREye.Eye_Right, ref VR_textureRightEye, ref textureBounds[1], EVRSubmitFlags.Submit_Default);
+				compositor.WaitGetPoses(renderPoseArray, gamePoseArray);
+
 				
-				leftEyeCam.transform.localPosition = pose_head.TransformPoint(pose_left_to_head.pos);
-				leftEyeCam.transform.localRotation = pose_head.rot * pose_left_to_head.rot;
-
-				rightEyeCam.transform.localPosition = pose_head.TransformPoint(pose_right_to_head.pos);
-				rightEyeCam.transform.localRotation = pose_head.rot * pose_right_to_head.rot;
 			}
 		}
 	}
 
-	[MenuItem("Window/EditorVR %e", false)]
+	[MenuItem("VR Mode/Enable Edit VR %e", false)]
 	static void ShowEditorVR()
 	{
 		// Using a utility window improves performance by saving from the overhead of DockArea.OnGUI()
-		EditorWindow.GetWindow<VRView>(true, "EditorVR", true);
+		EditorWindow.GetWindow<VRView>(true, "VR Mode", true);
 	}
 
-	[MenuItem("Window/EditorVR %e", true)]
+	[MenuItem("VR Mode/Enable Edit VR %e", true)]
 	static bool ShouldShowEditorVR()
 	{
 		return PlayerSettings.virtualRealitySupported;
 	}
-}
 
+	
+}
+#endif
