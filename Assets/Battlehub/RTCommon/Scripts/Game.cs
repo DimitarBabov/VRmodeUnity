@@ -1,12 +1,11 @@
-﻿using Battlehub.Utils;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 namespace Battlehub.RTCommon
 {
 
-    public class Game : MonoBehaviour
+	public class Game : MonoBehaviour
     {
         public Button BtnRestart;
         private ExposeToEditor[] m_editorObjects;

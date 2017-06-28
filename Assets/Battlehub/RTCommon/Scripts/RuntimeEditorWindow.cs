@@ -1,10 +1,9 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.EventSystems;
 
 namespace Battlehub.RTCommon
 {
-    public enum RuntimeWindowType
+	public enum RuntimeWindowType
     {
         None,
         GameView,

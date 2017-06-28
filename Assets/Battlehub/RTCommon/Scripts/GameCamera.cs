@@ -1,9 +1,8 @@
 ﻿using UnityEngine;
-using System.Collections;
 
 namespace Battlehub.RTCommon
 {
-    public delegate void GameCameraEvent();
+	public delegate void GameCameraEvent();
 
     public class GameCamera : MonoBehaviour
     {

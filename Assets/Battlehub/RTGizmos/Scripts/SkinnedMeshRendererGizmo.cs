@@ -1,11 +1,10 @@
 ﻿using UnityEngine;
-using System.Collections;
 using Battlehub.RTCommon;
 using Battlehub.Utils;
 
 namespace Battlehub.RTGizmos
 {
-    public class SkinnedMeshRendererGizmo : BoxGizmo
+	public class SkinnedMeshRendererGizmo : BoxGizmo
     {
         [SerializeField]
         private SkinnedMeshRenderer m_skinnedMeshRenderer;

@@ -2,12 +2,9 @@
 
 using UnityEngine;
 
-
-using System.Collections;
-
 namespace Battlehub.Utils
 {
-    public static class GameObjectExtensions
+	public static class GameObjectExtensions
     {
         public static bool IsPrefab(this GameObject go)
         {   

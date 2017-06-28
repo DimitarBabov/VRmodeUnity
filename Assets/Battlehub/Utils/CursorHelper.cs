@@ -1,9 +1,8 @@
 ﻿using UnityEngine;
-using System.Collections;
 
 namespace Battlehub.Utils
 {
-    public static class CursorHelper
+	public static class CursorHelper
     {
         private static object m_locker;
 

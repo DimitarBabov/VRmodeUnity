@@ -1,9 +1,8 @@
 ﻿using System;
-using Battlehub.RTCommon;
 using UnityEngine;
 namespace Battlehub.RTGizmos
 {
-    public abstract class SphereGizmo : BaseGizmo
+	public abstract class SphereGizmo : BaseGizmo
     {
         protected abstract Vector3 Center
         {

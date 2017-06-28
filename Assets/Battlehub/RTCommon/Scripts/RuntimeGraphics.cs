@@ -1,9 +1,8 @@
 ﻿using UnityEngine;
-using System.Collections;
 
 namespace Battlehub.RTCommon
 {
-    public static class RuntimeGraphics
+	public static class RuntimeGraphics
     {
         private static Mesh m_quadMesh;
 

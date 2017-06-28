@@ -1,9 +1,8 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Battlehub.RTGizmos
 {
-    public class DirectionalLightGizmo : BaseGizmo
+	public class DirectionalLightGizmo : BaseGizmo
     {
         protected override Matrix4x4 HandlesTransform
         {

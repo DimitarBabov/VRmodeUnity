@@ -1,10 +1,9 @@
 ﻿using UnityEngine;
 using Battlehub.RTCommon;
-using UnityEngine.EventSystems;
 
 namespace Battlehub.RTGizmos
 {
-    public abstract class BaseGizmo : MonoBehaviour, IGL
+	public abstract class BaseGizmo : MonoBehaviour, IGL
     {
         public float GridSize = 1.0f;
         public Color LineColor = new Color(0.0f, 1, 0.0f, 0.75f);

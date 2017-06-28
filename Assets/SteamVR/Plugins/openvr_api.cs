@@ -7,12 +7,11 @@
 
 using System;
 using System.Runtime.InteropServices;
-using Valve.VR;
 
 namespace Valve.VR
 {
 
-[StructLayout(LayoutKind.Sequential)]
+	[StructLayout(LayoutKind.Sequential)]
 public struct IVRSystem
 {
 	[UnmanagedFunctionPointer(CallingConvention.StdCall)]

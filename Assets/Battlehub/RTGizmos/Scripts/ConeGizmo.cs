@@ -1,10 +1,9 @@
 ﻿using UnityEngine;
 using System;
-using Battlehub.RTCommon;
 
 namespace Battlehub.RTGizmos
 {
-    public abstract class ConeGizmo : BaseGizmo
+	public abstract class ConeGizmo : BaseGizmo
     {
         protected abstract float Radius
         {

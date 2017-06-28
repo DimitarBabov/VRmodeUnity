@@ -1,11 +1,10 @@
 ﻿using UnityEngine;
-using System.Collections;
 using Battlehub.RTCommon;
 using Battlehub.Utils;
 
 namespace Battlehub.RTGizmos
 {
-    public class SphereColliderGizmo : SphereGizmo
+	public class SphereColliderGizmo : SphereGizmo
     {
         [SerializeField]
         private SphereCollider m_collider;

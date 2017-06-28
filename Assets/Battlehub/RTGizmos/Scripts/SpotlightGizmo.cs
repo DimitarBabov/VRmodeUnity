@@ -1,12 +1,11 @@
-﻿using System;
-using Battlehub.RTCommon;
+﻿using Battlehub.RTCommon;
 using Battlehub.Utils;
 using UnityEngine;
 
 
 namespace Battlehub.RTGizmos
 {
-    public class SpotlightGizmo : ConeGizmo
+	public class SpotlightGizmo : ConeGizmo
     {
         [SerializeField]
         private Light m_light;

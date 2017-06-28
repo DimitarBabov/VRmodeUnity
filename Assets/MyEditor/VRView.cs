@@ -1,15 +1,12 @@
-#if UNITY_EDITOR  
+#if UNITY_EDITOR
 using System;
 using UnityEngine;
 using UnityEngine.Assertions;
-using System.Collections;
-using System.Reflection;
 using UnityEngine.VR;
 #if ENABLE_STEAMVR_INPUT
 using Valve.VR;
 #endif
 using UnityEditor;
-using UnityObject = UnityEngine.Object;
 
 
 [InitializeOnLoad]
@@ -45,7 +42,7 @@ sealed class VRView : EditorWindow
 	Transform m_CameraRig;
 
 	bool m_HMDReady;
-	bool m_UseCustomPreviewCamera;
+	
 
 	public static Transform cameraRig
 	{
@@ -177,7 +174,7 @@ sealed class VRView : EditorWindow
 	void OnGUI()
 	{
 		
-
+		//Will render texture on window...
 		
 	}
 

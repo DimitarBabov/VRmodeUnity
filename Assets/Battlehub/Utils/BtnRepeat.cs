@@ -1,12 +1,10 @@
 ﻿using UnityEngine;
-using System.Collections;
 using UnityEngine.EventSystems;
-using System;
 using UnityEngine.Events;
 
 namespace Battlehub.Utils
 {
-    public class BtnRepeat : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
+	public class BtnRepeat : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
     {
         public float Interval = 0.1f;
         private bool m_repeat;

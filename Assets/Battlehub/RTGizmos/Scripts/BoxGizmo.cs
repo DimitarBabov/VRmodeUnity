@@ -1,10 +1,8 @@
 ﻿using UnityEngine;
-using Battlehub.RTCommon;
-using UnityEngine.Events;
 
 namespace Battlehub.RTGizmos
 {
-    public abstract class BoxGizmo : BaseGizmo
+	public abstract class BoxGizmo : BaseGizmo
     {
         protected abstract Bounds Bounds
         {

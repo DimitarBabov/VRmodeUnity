@@ -1,11 +1,10 @@
 ﻿using UnityEngine;
-using System.Collections;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Battlehub.RTCommon
 {
-    public class InputController : MonoBehaviour
+	public class InputController : MonoBehaviour
     {
         public static InputController Instance
         {
