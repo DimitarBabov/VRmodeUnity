@@ -62,7 +62,7 @@ public class  VR_Camera : MonoBehaviour
 		var t = transform;
 		if (head != t)
 		{
-			Expand();
+			
 
 			t.parent = origin;
 
@@ -143,125 +143,6 @@ public class  VR_Camera : MonoBehaviour
 
 	#endregion
 
-	#region Expand / Collapse object hierarchy
 
-#if UNITY_EDITOR
-	public bool isExpanded { get { return head != null && transform.parent == head; } }
-#endif
-	const string eyeSuffix = " (eye)";
-	const string earsSuffix = " (ears)";
-	const string headSuffix = " (head)";
-	const string originSuffix = " (origin)";
-	public string baseName { get { return name.EndsWith(eyeSuffix) ? name.Substring(0, name.Length - eyeSuffix.Length) : name; } }
-
-	// Object hierarchy creation to make it easy to parent other objects appropriately,
-	// otherwise this gets called on demand at runtime. Remaining initialization is
-	// performed at startup, once the hmd has been identified.
-	public void Expand()
-	{
-		var _origin = transform.parent;
-		if (_origin == null)
-		{
-			_origin = new GameObject(name + originSuffix).transform;
-			_origin.localPosition = transform.localPosition;
-			_origin.localRotation = transform.localRotation;
-			_origin.localScale = transform.localScale;
-		}
-
-		if (head == null)
-		{
-			_head = new GameObject(name + headSuffix, typeof(SteamVR_TrackedObject)).transform;
-			head.parent = _origin;
-			head.position = transform.position;
-			head.rotation = transform.rotation;
-			head.localScale = Vector3.one;
-			head.tag = tag;
-		}
-
-		if (transform.parent != head)
-		{
-			transform.parent = head;
-			transform.localPosition = Vector3.zero;
-			transform.localRotation = Quaternion.identity;
-			transform.localScale = Vector3.one;
-
-			while (transform.childCount > 0)
-				transform.GetChild(0).parent = head;
-
-			var guiLayer = GetComponent<GUILayer>();
-			if (guiLayer != null)
-			{
-				DestroyImmediate(guiLayer);
-				head.gameObject.AddComponent<GUILayer>();
-			}
-
-			var audioListener = GetComponent<AudioListener>();
-			if (audioListener != null)
-			{
-				DestroyImmediate(audioListener);
-				_ears = new GameObject(name + earsSuffix, typeof(SteamVR_Ears)).transform;
-				ears.parent = _head;
-				ears.localPosition = Vector3.zero;
-				ears.localRotation = Quaternion.identity;
-				ears.localScale = Vector3.one;
-			}
-		}
-
-		if (!name.EndsWith(eyeSuffix))
-			name += eyeSuffix;
-	}
-
-	public void Collapse()
-	{
-		transform.parent = null;
-
-		// Move children and components from head back to camera.
-		while (head.childCount > 0)
-			head.GetChild(0).parent = transform;
-
-		var guiLayer = head.GetComponent<GUILayer>();
-		if (guiLayer != null)
-		{
-			DestroyImmediate(guiLayer);
-			gameObject.AddComponent<GUILayer>();
-		}
-
-		if (ears != null)
-		{
-			while (ears.childCount > 0)
-				ears.GetChild(0).parent = transform;
-
-			DestroyImmediate(ears.gameObject);
-			_ears = null;
-
-			gameObject.AddComponent(typeof(AudioListener));
-		}
-
-		if (origin != null)
-		{
-			// If we created the origin originally, destroy it now.
-			if (origin.name.EndsWith(originSuffix))
-			{
-				// Reparent any children so we don't accidentally delete them.
-				var _origin = origin;
-				while (_origin.childCount > 0)
-					_origin.GetChild(0).parent = _origin.parent;
-
-				DestroyImmediate(_origin.gameObject);
-			}
-			else
-			{
-				transform.parent = origin;
-			}
-		}
-
-		DestroyImmediate(head.gameObject);
-		_head = null;
-
-		if (name.EndsWith(eyeSuffix))
-			name = name.Substring(0, name.Length - eyeSuffix.Length);
-	}
-
-	#endregion
 }
 

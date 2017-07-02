@@ -7,7 +7,7 @@
 using UnityEngine;
 using Valve.VR;
 
-public class VR_Overlay : MonoBehaviour
+public class VR_OverLayEditor 
 {
 	public Texture texture;
 	public bool curved = true;
@@ -23,30 +23,30 @@ public class VR_Overlay : MonoBehaviour
 
 	public VROverlayInputMethod inputMethod = VROverlayInputMethod.None;
 
-	static public VR_Overlay instance { get; private set; }
+	static public VR_OverLayEditor instance { get; private set; }
 
 	static public string key { get { return "unity:" + Application.companyName + "." + Application.productName; } }
 
 	private ulong handle = OpenVR.k_ulOverlayHandleInvalid;
 
-	void OnEnable()
+	void Enable()
 	{
 		var overlay = OpenVR.Overlay;
 		if (overlay != null)
 		{
-			var error = overlay.CreateOverlay(key, gameObject.name, ref handle);
+			var error = overlay.CreateOverlay(key, "VR Overlay", ref handle);
 			if (error != EVROverlayError.None)
 			{
 				Debug.Log(overlay.GetOverlayErrorNameFromEnum(error));
-				enabled = false;
+				
 				return;
 			}
 		}
 
-		VR_Overlay.instance = this;
+		VR_OverLayEditor.instance = this;
 	}
 
-	void OnDisable()
+	void Disable()
 	{
 		if (handle != OpenVR.k_ulOverlayHandleInvalid)
 		{
@@ -59,7 +59,7 @@ public class VR_Overlay : MonoBehaviour
 			handle = OpenVR.k_ulOverlayHandleInvalid;
 		}
 
-		VR_Overlay.instance = null;
+		VR_OverLayEditor.instance = null;
 	}
 
 	public void UpdateOverlay()
@@ -108,7 +108,7 @@ public class VR_Overlay : MonoBehaviour
 			overlay.SetOverlayMouseScale(handle, ref vecMouseScale);
 
 			
-			var offset = new SteamVR_Utils.RigidTransform(transform);
+			var offset = new SteamVR_Utils.RigidTransform();
 			offset.pos.z += distance;
 
 			var t = offset.ToHmdMatrix34();
@@ -137,15 +137,6 @@ public class VR_Overlay : MonoBehaviour
 		}
 	}
 
-	public bool PollNextEvent(ref VREvent_t pEvent)
-	{
-		var overlay = OpenVR.Overlay;
-		if (overlay == null)
-			return false;
-
-		var size = (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(Valve.VR.VREvent_t));
-		return overlay.PollNextOverlayEvent(handle, ref pEvent, size);
-	}
 	
 }
 
