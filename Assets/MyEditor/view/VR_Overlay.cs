@@ -10,7 +10,7 @@ using Valve.VR;
 
 
 //[ExecuteInEditMode]
-public class VR_Overlay : Editor
+public class VR_Overlay 
 {
 	public Texture texture;
 	public Texture DesktopTexture;
@@ -153,7 +153,10 @@ public class VR_Overlay : Editor
 		
 	}
 	
-	
+	public void reposition()
+	{
+		
+	}
 	
 
 	

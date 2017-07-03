@@ -9,8 +9,6 @@ using Valve.VR;
 using UnityEditor;
 
 
-[InitializeOnLoad]
-[ExecuteInEditMode]
 sealed class VRView : EditorWindow
 {
 	const string k_ShowDeviceView = "VRView.ShowDeviceView";
@@ -83,6 +81,7 @@ sealed class VRView : EditorWindow
 	public void OnEnable()
 	{
 		EditorApplication.playmodeStateChanged += OnPlaymodeStateChanged;
+		EditorApplication.update += UpdateBackground;
 
 		Assert.IsNull(s_ActiveView, "Only one EditorVR should be active");
 
@@ -98,6 +97,8 @@ sealed class VRView : EditorWindow
 			viewDisabled();
 
 		EditorApplication.playmodeStateChanged -= OnPlaymodeStateChanged;
+		EditorApplication.update -= UpdateBackground;
+
 		OpenVR.Shutdown();
 
 		EditorPrefs.SetBool(k_ShowDeviceView, m_ShowDeviceView);
@@ -114,6 +115,8 @@ sealed class VRView : EditorWindow
 
 		if (desktop != null)
 			desktop.Stop();
+
+
 	}
 
 	
@@ -138,7 +141,7 @@ sealed class VRView : EditorWindow
 		}
 	}
 	
-	private void Update()
+	private void UpdateBackground()
 	{
 
 		// If code is compiling, then we need to clean up the window resources before classes get re-initialized
@@ -210,8 +213,10 @@ sealed class VRView : EditorWindow
 		if (Application.isPlaying)
 			return;
 
+		desktop.Update();
 		vr_cam.Render();
 		overlay.UpdateOverlay();
+
 
 	}
 
@@ -227,6 +232,12 @@ sealed class VRView : EditorWindow
 	{
 		return PlayerSettings.virtualRealitySupported;
 	}
-	
+
+	[MenuItem("VR Mode/Reposition VR camera %q", false)]
+	static void CloseEditorVR()
+	{
+		Debug.Log("VR camera repositioned...");
+		//VR_Overlay.instance.reposition();
+	}
 }
 #endif

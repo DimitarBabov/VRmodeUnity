@@ -196,7 +196,7 @@ public class VR_DesktopManager {
 
         ReInit();
 
-		EditorApplication.update += Update;
+		
 
 		
 
@@ -216,11 +216,11 @@ public class VR_DesktopManager {
         if (m_forceMouseTrail)
             SetMouseTrailEnabled(false);
 
-		EditorApplication.update -= Update;
+		
 	}
 
     // Update is called once per frame
-    void Update () {
+    public void Update () {
 
 		GL.IssuePluginEvent(DesktopCapturePlugin_GetRenderEventFunc(), 0);
 
