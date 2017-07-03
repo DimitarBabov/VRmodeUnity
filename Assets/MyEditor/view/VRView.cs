@@ -28,6 +28,7 @@ sealed class VRView : EditorWindow
 	VR_Overlay overlay;
 
 	VR_CameraRig vr_cam;
+	VR_DesktopManager desktop;
 
 	Transform m_CameraRig;
 
@@ -104,9 +105,15 @@ sealed class VRView : EditorWindow
 		if (m_CameraRig)
 			DestroyImmediate(m_CameraRig.gameObject, true);
 
-		vr_cam.Destroy();
+		if (vr_cam)
+			vr_cam.Destroy();
 
-		overlay.Disable();
+
+		if(overlay!=null)
+			overlay.Destroy();
+
+		if (desktop != null)
+			desktop.Stop();
 	}
 
 	
@@ -130,7 +137,7 @@ sealed class VRView : EditorWindow
 			Close();
 		}
 	}
-
+	
 	private void Update()
 	{
 
@@ -181,14 +188,21 @@ sealed class VRView : EditorWindow
 		
 	    //OVERLAY
 		overlay = new VR_Overlay();
-		overlay.Enable();
-		overlay.texture = FindObjectOfType<texture_sample>().sampleTexture;
+		overlay.Create();
+
+		
 		
 		//VR camera
 		vr_cam = new VR_CameraRig();
 		vr_cam.Create();
 		vr_cam.SetTexture();
 
+		//VR_desktop
+		desktop = new VR_DesktopManager();
+		desktop.Start();
+
+		//temporary texture assignment........................................................................
+		overlay.texture = desktop.main_texture;
 	}
 
 	public void VR_render()
@@ -213,7 +227,6 @@ sealed class VRView : EditorWindow
 	{
 		return PlayerSettings.virtualRealitySupported;
 	}
-
 	
 }
 #endif

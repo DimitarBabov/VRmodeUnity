@@ -5,10 +5,12 @@
 //=============================================================================
 
 using UnityEngine;
+using UnityEditor;
 using Valve.VR;
 
+
 //[ExecuteInEditMode]
-public class VR_Overlay 
+public class VR_Overlay : Editor
 {
 	public Texture texture;
 	public Texture DesktopTexture;
@@ -32,8 +34,9 @@ public class VR_Overlay
 
 	private ulong handle = OpenVR.k_ulOverlayHandleInvalid;
 
-	public void Enable()
+	public void Create()
 	{
+		
 		var overlay = OpenVR.Overlay;
 		if (overlay != null)
 		{
@@ -49,7 +52,7 @@ public class VR_Overlay
 		VR_Overlay.instance = this;
 	}
 
-	public void Disable()
+	public void Destroy()
 	{
 		if (handle != OpenVR.k_ulOverlayHandleInvalid)
 		{
@@ -138,18 +141,20 @@ public class VR_Overlay
 		{
 			overlay.HideOverlay(handle);
 		}
+
+		CheckKeyboardAndMouse();
 	}
-	/*
-	public bool PollNextEvent(ref VREvent_t pEvent)
+
+	public void CheckKeyboardAndMouse()
 	{
 		var overlay = OpenVR.Overlay;
 		if (overlay == null)
-			return false;
-
-		var size = (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(Valve.VR.VREvent_t));
-		return overlay.PollNextOverlayEvent(handle, ref pEvent, size);
+			return;
+		
 	}
-	*/
+	
+	
+	
 
 	
 }

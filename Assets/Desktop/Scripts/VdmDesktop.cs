@@ -132,7 +132,9 @@ public class VdmDesktop : MonoBehaviour
 
     public void CheckKeyboardAndMouse()
     {
-        if (Input.GetKeyDown(m_manager.KeyboardShow))
+		
+
+		if (Input.GetKeyDown(m_manager.KeyboardShow))
         {
             VdmDesktopManager.ActionInThisFrame = true;
 

@@ -70,28 +70,41 @@ public class VR_CameraRig : Object
 
 	public void Destroy()
 	{
-		if (LeftEye)			
-			DestroyImmediate(LeftEye, true);
+		if (LeftEye)
+		{
+			DestroyImmediate(LeftEye.gameObject, true);
+		}
 
 		if (RightEye)
-			DestroyImmediate(RightEye, true);
+		{
+			DestroyImmediate(RightEye.gameObject, true);
+		}
 	}
 
 
 	public void UpdateTransform()
 	{
+		if (hmd == null)
+		{
+			Debug.LogError("OpenVR system is not initialized");
+			return;
+		}
+
 		SteamVR_Utils.RigidTransform pose_head = new SteamVR_Utils.RigidTransform(renderPoseArray[0].mDeviceToAbsoluteTracking);
+		Head.transform.localPosition = pose_head.pos;
+		Head.transform.localRotation = pose_head.rot;
+
+
 		SteamVR_Utils.RigidTransform pose_left_to_head = new SteamVR_Utils.RigidTransform(hmd.GetEyeToHeadTransform(EVREye.Eye_Left));
 		SteamVR_Utils.RigidTransform pose_right_to_head = new SteamVR_Utils.RigidTransform(hmd.GetEyeToHeadTransform(EVREye.Eye_Right));
 
-		leftEyeCam.transform.localPosition = pose_head.TransformPoint(pose_left_to_head.pos);
-		leftEyeCam.transform.localRotation = pose_head.rot * pose_left_to_head.rot;
+		leftEyeCam.transform.localPosition = Head.transform.TransformPoint(pose_left_to_head.pos);
+		leftEyeCam.transform.localRotation = Head.transform.localRotation * pose_left_to_head.rot;
 
-		rightEyeCam.transform.localPosition = pose_head.TransformPoint(pose_right_to_head.pos);
-		rightEyeCam.transform.localRotation = pose_head.rot * pose_right_to_head.rot;
+		rightEyeCam.transform.localPosition = Head.transform.TransformPoint(pose_right_to_head.pos);
+		rightEyeCam.transform.localRotation = Head.transform.localRotation * pose_right_to_head.rot;
 
-		Head.transform.localPosition = pose_head.pos;
-		Head.transform.localRotation = pose_head.rot;
+		
 
 	}
 
