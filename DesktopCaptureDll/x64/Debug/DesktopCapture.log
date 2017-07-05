@@ -1,4 +1,4 @@
-﻿  main.cpp
-     Creating library x64\Debug\DesktopCapture.lib and object x64\Debug\DesktopCapture.exp
-  DesktopCapture.vcxproj -> A:\VR_mode\vr-desktop-mirror-master\DesktopCapture\x64\Debug\DesktopCapture.dll
-  DesktopCapture.vcxproj -> x64\Debug\DesktopCapture.pdb (Full PDB)
+﻿C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V140\Microsoft.CppBuild.targets(368,5): warning MSB8004: Output Directory does not end with a trailing slash.  This build instance will add the slash as it is required to allow proper evaluation of the Output Directory.
+     Creating library ..\Assets\Desktop\Plugins\x86_64\DesktopCapture.lib and object ..\Assets\Desktop\Plugins\x86_64\DesktopCapture.exp
+  DesktopCapture.vcxproj -> A:\VR_mode\MyVrEditor\DesktopCaptureDll\..\Assets\Desktop\Plugins\x86_64\DesktopCapture.dll
+  DesktopCapture.vcxproj -> ..\Assets\Desktop\Plugins\x86_64\DesktopCapture.pdb (Full PDB)

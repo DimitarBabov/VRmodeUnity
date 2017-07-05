@@ -13,8 +13,7 @@ using Valve.VR;
 public class VR_Overlay 
 {
 	public Texture texture;
-	public Texture DesktopTexture;
-	public GameObject monitor;
+	
 	public bool curved = true;
 	public bool antialias = true;
 	public bool highquality = true;
@@ -24,23 +23,24 @@ public class VR_Overlay
 
 	public Vector4 uvOffset = new Vector4(0, 0, 1, 1);
 	public Vector2 mouseScale = new Vector2(1, 1);
-	public Vector2 curvedRange = new Vector2(1, 2);
+	//public Vector2 curvedRange = new Vector2(1, 2);
 
 	public VROverlayInputMethod inputMethod = VROverlayInputMethod.None;
 
 	static public VR_Overlay instance { get; private set; }
 
-	static public string key { get { return "unity:" + Application.companyName + "." + Application.productName; } }
+	private string key;
+	
 
 	private ulong handle = OpenVR.k_ulOverlayHandleInvalid;
 
-	public void Create()
+	public void Create(string overlay_key, string overlay_name)
 	{
-		
+		key = overlay_key;
 		var overlay = OpenVR.Overlay;
 		if (overlay != null)
 		{
-			var error = overlay.CreateOverlay(key,"xxx" /*gameObject.name*/, ref handle);
+			var error = overlay.CreateOverlay(key, overlay_name /*gameObject.name*/, ref handle);
 			if (error != EVROverlayError.None)
 			{
 				Debug.Log(overlay.GetOverlayErrorNameFromEnum(error));
@@ -72,6 +72,7 @@ public class VR_Overlay
 	{
 		
 		var overlay = OpenVR.Overlay;
+
 		if (overlay == null)
 			return;
 
@@ -93,7 +94,7 @@ public class VR_Overlay
 
 			overlay.SetOverlayAlpha(handle, alpha);
 			overlay.SetOverlayWidthInMeters(handle, scale);
-			overlay.SetOverlayAutoCurveDistanceRangeInMeters(handle, curvedRange.x, curvedRange.y);
+			//overlay.SetOverlayAutoCurveDistanceRangeInMeters(handle, curvedRange.x, curvedRange.y);
 
 			var textureBounds = new VRTextureBounds_t();
 			textureBounds.uMin = (0 + uvOffset.x) * uvOffset.z;
@@ -118,7 +119,7 @@ public class VR_Overlay
 			offset.pos.z += distance;
 
 			var t = offset.ToHmdMatrix34();
-			overlay.SetOverlayTransformAbsolute(handle, VR_Render.instance.trackingSpace, ref t);
+			overlay.SetOverlayTransformAbsolute(handle, ETrackingUniverseOrigin.TrackingUniverseStanding, ref t);
 			
 
 			overlay.SetOverlayInputMethod(handle, inputMethod);
@@ -129,7 +130,7 @@ public class VR_Overlay
 			if (highquality)
 			{
 				overlay.SetHighQualityOverlay(handle);
-				overlay.SetOverlayFlag(handle, VROverlayFlags.Curved, curved);
+				//overlay.SetOverlayFlag(handle, VROverlayFlags.Curved, curved);
 				overlay.SetOverlayFlag(handle, VROverlayFlags.RGSS4X, antialias);
 			}
 			else if (overlay.GetHighQualityOverlay() == handle)
@@ -158,7 +159,8 @@ public class VR_Overlay
 		
 	}
 	
-
+	
+	
 	
 }
 

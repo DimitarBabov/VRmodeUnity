@@ -1,12 +1,12 @@
 ﻿
 
 using UnityEngine;
-using UnityEditor;
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-[ExecuteInEditMode]
+
 public class VR_DesktopManager {
 
     public static VR_DesktopManager Instance;
@@ -186,19 +186,16 @@ public class VR_DesktopManager {
 
 	public Texture main_texture;
 
+
     private bool m_forceMouseTrail = false; // Otherwise cursor is not visible
 
     // Use this for initialization
     public void Start () {
 
-		main_texture = new Texture();
+		
         Instance = this;
 
         ReInit();
-
-		
-
-		
 
 		if (GetMouseTrailEnabled() == false)
 		{
@@ -206,6 +203,7 @@ public class VR_DesktopManager {
 			SetMouseTrailEnabled(true);
 		}
 
+		//yield return new WaitForSeconds(1);
 		//StartCoroutine(OnRender());
 	}
 
@@ -216,7 +214,7 @@ public class VR_DesktopManager {
         if (m_forceMouseTrail)
             SetMouseTrailEnabled(false);
 
-		
+	
 	}
 
     // Update is called once per frame
@@ -233,12 +231,12 @@ public class VR_DesktopManager {
         
         if (needReinit > 1000)
             ReInit();
-
+/*
         if(Input.GetKeyDown(KeyCode.R))
         {
             UnityEngine.VR.InputTracking.Recenter();    
         }
-		/*
+		
         foreach (VdmDesktop monitor in Monitors)
         {
             monitor.HideLine();
@@ -293,10 +291,10 @@ public class VR_DesktopManager {
 
        int width = DesktopCapturePlugin_GetWidth(0);
        int height = DesktopCapturePlugin_GetHeight(0);
-       var tex = new Texture2D(width, height, TextureFormat.BGRA32, false, LinearColorSpace);
+		main_texture = new Texture2D(width, height, TextureFormat.BGRA32, false, LinearColorSpace);
 
-       DesktopCapturePlugin_SetTexturePtr(0, tex.GetNativeTexturePtr());
-		main_texture = tex;
+       DesktopCapturePlugin_SetTexturePtr(0, main_texture.GetNativeTexturePtr());
+		
             
           
     }

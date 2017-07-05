@@ -9,60 +9,43 @@ using Valve.VR;
 using UnityEditor;
 
 
-sealed class VRView : EditorWindow
+sealed class VRView 
 {
 	const string k_ShowDeviceView = "VRView.ShowDeviceView";
 	const string k_UseCustomPreviewCamera = "VRView.UseCustomPreviewCamera";
 	const string k_LaunchOnExitPlaymode = "VRView.LaunchOnExitPlaymode";
-	bool m_ShowDeviceView;
-
-
-	static VRView s_ActiveView;
+	
 	//OpenVR stuff
 	CVRSystem hmd;
-	CVRCompositor compositor;
-	
-
 	VR_Overlay overlay;
-
+	
 	VR_CameraRig vr_cam;
 	VR_DesktopManager desktop;
-
-	Transform m_CameraRig;
-
+	Texture scene_hole_texture;
+	
 	bool m_HMDReady;
 	
+	public static bool viewDisabled;
 
-	public static Transform cameraRig
-	{
-		get
-		{
-			if (s_ActiveView)
-				return s_ActiveView.m_CameraRig;
-
-			return null;
-		}
-	}
-	public static VRView activeView
-	{
-		get { return s_ActiveView; }
-	}
-
-	public static event Action viewEnabled;
-	public static event Action viewDisabled;
-	public static event Action<EditorWindow> beforeOnGUI;
 	
 	public static event Action<bool> hmdStatusChange;
 
 	public Rect guiRect { get; private set; }
 
+	static VRView CreateInstance()
+	{
+		return new VRView();
+	}
+
+
+	/*
 	static VRView GetWindow()
 	{
 		return GetWindow<VRView>(true);
 	}
 
 
-	
+	/*
 	static void ReopenOnExitPlaymode()
 	{
 		bool launch = EditorPrefs.GetBool(k_LaunchOnExitPlaymode, false);
@@ -74,49 +57,77 @@ sealed class VRView : EditorWindow
 				GetWindow<VRView>();
 		}
 		
-	}
+	}*/
 
 
 
 	public void OnEnable()
 	{
-		EditorApplication.playmodeStateChanged += OnPlaymodeStateChanged;
-		EditorApplication.update += UpdateBackground;
+		viewDisabled = false;
 
-		Assert.IsNull(s_ActiveView, "Only one EditorVR should be active");
+		EditorApplication.playmodeStateChanged += OnPlaymodeStateChanged;
+		EditorApplication.update += Update;
 
 
 		//Initialize VR
-		VR_init();		
+		var error = EVRInitError.None;
+
+		hmd = OpenVR.System;
+
+		if (hmd == null)
+			hmd = OpenVR.Init(ref error, EVRApplicationType.VRApplication_Scene);
+
+		//OVERLAYS
+		if (overlay == null)
+		{
+			overlay = new VR_Overlay();
+			overlay.Create("Desktop", "Desktop Overlay");
+		}
 		
+		//VR camera
+		if (vr_cam == null)
+		{
+			vr_cam = new VR_CameraRig();
+			vr_cam.Create();
+			vr_cam.SetTexture();
+		}
+
+		if (desktop == null)
+		{
+			//VR_desktop
+			desktop = new VR_DesktopManager();
+			desktop.Start();			
+		}
+		//temporary texture assignment........................................................................
+		overlay.texture = desktop.main_texture;
+
 	}
 
 	public void OnDisable()
 	{
-		if (viewDisabled != null)
-			viewDisabled();
+		viewDisabled = true;
 
 		EditorApplication.playmodeStateChanged -= OnPlaymodeStateChanged;
-		EditorApplication.update -= UpdateBackground;
+		EditorApplication.update -= Update;
+
+		
+		if (vr_cam !=null)
+		{
+			vr_cam.Destroy();
+			vr_cam = null;
+		}
+
+
+
+		if (overlay != null)
+		{
+			overlay.Destroy();
+			overlay = null;
+		}
+
+		
 
 		OpenVR.Shutdown();
-
-		EditorPrefs.SetBool(k_ShowDeviceView, m_ShowDeviceView);
-
-		if (m_CameraRig)
-			DestroyImmediate(m_CameraRig.gameObject, true);
-
-		if (vr_cam)
-			vr_cam.Destroy();
-
-
-		if(overlay!=null)
-			overlay.Destroy();
-
-		if (desktop != null)
-			desktop.Stop();
-
-
 	}
 
 	
@@ -126,8 +137,9 @@ sealed class VRView : EditorWindow
 	void OnGUI()
 	{
 		
-		//Will render texture on window...
 		
+		//Will render texture on window...
+
 	}
 
 	
@@ -137,38 +149,27 @@ sealed class VRView : EditorWindow
 		if (EditorApplication.isPlayingOrWillChangePlaymode)
 		{			
 			EditorPrefs.SetBool(k_LaunchOnExitPlaymode, true);
-			Close();
+			//Close();
 		}
+
+		OnDisable();
 	}
 	
-	private void UpdateBackground()
+	private void Update()
 	{
 
 		// If code is compiling, then we need to clean up the window resources before classes get re-initialized
 		if (EditorApplication.isCompiling)
 		{
-			Close();
+			//Close();
 			return;
 		}
 
 		VR_render();
 
-		UpdateHMDStatus();
-
 	}
 
-	void UpdateHMDStatus()
-	{
-		if (hmdStatusChange != null)
-		{
-			var ready = GetIsUserPresent();
-			if (m_HMDReady != ready)
-			{
-				m_HMDReady = ready;
-				hmdStatusChange(ready);
-			}
-		}
-	}
+	
 
 	static bool GetIsUserPresent()
 	{
@@ -186,26 +187,15 @@ sealed class VRView : EditorWindow
 	public void VR_init()
 	{
 
-		var error = EVRInitError.None;
-		hmd = OpenVR.Init(ref error, EVRApplicationType.VRApplication_Scene);
 		
-	    //OVERLAY
-		overlay = new VR_Overlay();
-		overlay.Create();
+				
+		//scene_hole_texture = FindObjectOfType<texture_sample>().sampleTexture;
 
+		//Graphics.ConvertTexture(temp_tex, scene_hole_texture);
+		
+		//Graphics.CopyTexture(scene_hole_texture, 0,0, 0,0,100,100, overlay.texture,0,0,100,100);
 		
 		
-		//VR camera
-		vr_cam = new VR_CameraRig();
-		vr_cam.Create();
-		vr_cam.SetTexture();
-
-		//VR_desktop
-		desktop = new VR_DesktopManager();
-		desktop.Start();
-
-		//temporary texture assignment........................................................................
-		overlay.texture = desktop.main_texture;
 	}
 
 	public void VR_render()
@@ -216,15 +206,36 @@ sealed class VRView : EditorWindow
 		desktop.Update();
 		vr_cam.Render();
 		overlay.UpdateOverlay();
+		
 
 
 	}
 
-	[MenuItem("VR Mode/Enable Edit VR %e", false)]
-	static void ShowEditorVR()
+	public static VRView instance;
+
+	[MenuItem("VR Mode/Enable or Disam Edit VR %e", false)]
+	static void EditorVR()
 	{
+		viewDisabled = !viewDisabled;
 		// Using a utility window improves performance by saving from the overhead of DockArea.OnGUI()
-		EditorWindow.GetWindow<VRView>(true, "VR Mode", true);
+		if (instance == null)
+		{
+			instance = CreateInstance();
+			instance.OnEnable();
+			return;
+		}
+
+		if(viewDisabled)
+		{
+			instance.OnDisable();			
+		}else
+		{
+			instance.OnEnable();
+		}
+
+
+		
+		//EditorWindow.GetWindow<VRView>(true, "VR Mode", true);
 	}
 
 	[MenuItem("VR Mode/Enable Edit VR %e", true)]
