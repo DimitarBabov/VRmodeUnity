@@ -5,7 +5,7 @@ using UnityEngine.Assertions;
 using UnityEditor;
 using Valve.VR;
 
-public class VR_CameraRig : Object
+public class VR_CameraRig
 {
 	
 	private CVRSystem hmd;
@@ -22,6 +22,8 @@ public class VR_CameraRig : Object
 	RenderTexture renderTextureRightEye;
 	Camera leftEyeCam;
 	Camera rightEyeCam;
+
+	static public VR_CameraRig instance { get; private set; }
 
 	public void Create()
 	{
@@ -66,19 +68,15 @@ public class VR_CameraRig : Object
 		//Initialize the transforms
 		UpdateTransform();
 
+		VR_CameraRig.instance = this;
 	}
 
 	public void Destroy()
 	{
-		if (LeftEye)
-		{
-			DestroyImmediate(LeftEye.gameObject, true);
-		}
-
-		if (RightEye)
-		{
-			DestroyImmediate(RightEye.gameObject, true);
-		}
+		renderTextureRightEye.Release();
+		renderTextureLeftEye.Release();
+		
+		VR_CameraRig.instance = null;
 	}
 
 
@@ -162,7 +160,7 @@ public class VR_CameraRig : Object
 		rightEyeCam.fieldOfView = fieldOfView;
 	}
 
-	public void Render()
+	public void Update()
 	{
 		UpdateTransform();
 
