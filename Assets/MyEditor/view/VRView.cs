@@ -129,7 +129,8 @@ sealed class VRView
 		//copy desktop texture in overlay texture. This is neccesarry becasue desktop main texture is BGRA32 format and we need RGBA32
 		Graphics.Blit(desktop.main_texture, overlay.texture);
 		
-		scene_rect = SceneView.GetWindow<SceneView>().position;//!!!! doesnt allow other windows to be active
+		scene_rect = SceneView.GetWindow<SceneView>("Scene",false).position;//!!!! doesnt allow other windows to be active
+		
 
 		if ((int)scene_rect.xMin < 0 || (int)scene_rect.yMin < 0)
 			return;

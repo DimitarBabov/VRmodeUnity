@@ -13,7 +13,8 @@ using Valve.VR;
 public class VR_Overlay 
 {
 	public RenderTexture texture;
-	
+	private GameObject gameobject;
+	public Transform transform;
 	public bool curved = true;
 	public bool antialias = true;
 	public bool highquality = true;
@@ -36,6 +37,9 @@ public class VR_Overlay
 
 	public void Create(string overlay_key, string overlay_name)
 	{
+		gameobject = new GameObject("ModeVR Overlay");
+		transform = gameobject.transform;
+
 		key = overlay_key;
 		var overlay = OpenVR.Overlay;
 		if (overlay != null)
@@ -48,6 +52,7 @@ public class VR_Overlay
 				return;
 			}
 		}
+		
 
 		VR_Overlay.instance = this;
 	}
@@ -64,7 +69,7 @@ public class VR_Overlay
 
 			handle = OpenVR.k_ulOverlayHandleInvalid;
 		}
-
+		Editor.DestroyImmediate(gameobject);
 		VR_Overlay.instance = null;
 	}
 
@@ -114,13 +119,9 @@ public class VR_Overlay
 			vecMouseScale.v1 = mouseScale.y;
 			overlay.SetOverlayMouseScale(handle, ref vecMouseScale);
 
-			
-			var offset = SteamVR_Utils.RigidTransform.identity;
-			offset.pos.z += distance;
 
-			var t = offset.ToHmdMatrix34();
-			overlay.SetOverlayTransformAbsolute(handle, ETrackingUniverseOrigin.TrackingUniverseStanding, ref t);
-			
+
+			UpdateTransform();
 
 			overlay.SetOverlayInputMethod(handle, inputMethod);
 
@@ -154,9 +155,20 @@ public class VR_Overlay
 		
 	}
 	
-	public void reposition()
+	public void UpdateTransform()
 	{
+		var overlay = OpenVR.Overlay;
+
+		if (overlay == null)
+			return;
+
+		SteamVR_Utils.RigidTransform rigid_transform = new SteamVR_Utils.RigidTransform(transform);
+		rigid_transform.pos.z += distance;
 		
+
+		var t = rigid_transform.ToHmdMatrix34();
+		overlay.SetOverlayTransformAbsolute(handle, ETrackingUniverseOrigin.TrackingUniverseStanding, ref t);
+
 	}
 	
 	
