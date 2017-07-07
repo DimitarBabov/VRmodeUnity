@@ -12,7 +12,7 @@ using Valve.VR;
 //[ExecuteInEditMode]
 public class VR_Overlay 
 {
-	public Texture texture;
+	public RenderTexture texture;
 	
 	public bool curved = true;
 	public bool antialias = true;
@@ -23,7 +23,7 @@ public class VR_Overlay
 
 	public Vector4 uvOffset = new Vector4(0, 0, 1, 1);
 	public Vector2 mouseScale = new Vector2(1, 1);
-	//public Vector2 curvedRange = new Vector2(1, 2);
+	public Vector2 curvedRange = new Vector2(1, 2);
 
 	public VROverlayInputMethod inputMethod = VROverlayInputMethod.None;
 
@@ -94,7 +94,7 @@ public class VR_Overlay
 
 			overlay.SetOverlayAlpha(handle, alpha);
 			overlay.SetOverlayWidthInMeters(handle, scale);
-			//overlay.SetOverlayAutoCurveDistanceRangeInMeters(handle, curvedRange.x, curvedRange.y);
+			overlay.SetOverlayAutoCurveDistanceRangeInMeters(handle, curvedRange.x, curvedRange.y);
 
 			var textureBounds = new VRTextureBounds_t();
 			textureBounds.uMin = (0 + uvOffset.x) * uvOffset.z;
@@ -130,7 +130,7 @@ public class VR_Overlay
 			if (highquality)
 			{
 				overlay.SetHighQualityOverlay(handle);
-				//overlay.SetOverlayFlag(handle, VROverlayFlags.Curved, curved);
+				overlay.SetOverlayFlag(handle, VROverlayFlags.Curved, curved);
 				overlay.SetOverlayFlag(handle, VROverlayFlags.RGSS4X, antialias);
 			}
 			else if (overlay.GetHighQualityOverlay() == handle)

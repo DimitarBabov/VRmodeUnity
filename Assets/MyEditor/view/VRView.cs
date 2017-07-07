@@ -19,6 +19,10 @@ sealed class VRView
 	VR_Overlay overlay;	
 	VR_CameraRig vr_cam;
 	VR_DesktopManager desktop;
+	Texture scene_cutout;
+	Texture scene_mouse;
+	Rect scene_rect = new Rect();
+	Rect scene_mouse_rect = new Rect();
 
 	public static bool viewDisabled = true;
 	public Rect guiRect { get; private set; }
@@ -67,11 +71,15 @@ sealed class VRView
 		{
 			//VR_desktop
 			desktop = new VR_DesktopManager();
-			desktop.Start();			
+			desktop.Start();
 		}
 		//temporary texture assignment........................................................................
-		overlay.texture = desktop.main_texture;
+		scene_cutout = Editor.FindObjectOfType<texture_sample>().sampleTexture;
+		scene_mouse = Editor.FindObjectOfType<texture_sample>().mouseTexture;
 
+		overlay.texture = new RenderTexture(desktop.main_texture.width, desktop.main_texture.height, 16);
+		Graphics.Blit(desktop.main_texture, overlay.texture);
+		
 	}
 
 	public void Disable()
@@ -93,6 +101,8 @@ sealed class VRView
 			overlay.Destroy();
 			overlay = null;
 		}
+
+		
 
 		OpenVR.Shutdown();
 	}
@@ -116,6 +126,33 @@ sealed class VRView
 	{
 		if (Application.isPlaying)
 			return;
+		//copy desktop texture in overlay texture. This is neccesarry becasue desktop main texture is BGRA32 format and we need RGBA32
+		Graphics.Blit(desktop.main_texture, overlay.texture);
+		
+		scene_rect = SceneView.GetWindow<SceneView>().position;//!!!! doesnt allow other windows to be active
+
+		if ((int)scene_rect.xMin < 0 || (int)scene_rect.yMin < 0)
+			return;
+
+		Graphics.CopyTexture(scene_cutout, 0, 0, 0,0, (int)scene_rect.width, (int)scene_rect.height, overlay.texture, 0, 0, (int)scene_rect.xMin, (int)scene_rect.yMin);
+
+		//make cursor visible when inside scene view window
+		scene_mouse_rect.xMin = desktop.GetCursorPos().x;
+		scene_mouse_rect.yMin = desktop.GetCursorPos().y;
+		scene_mouse_rect.xMax = scene_mouse_rect.xMin + scene_mouse.width;
+		scene_mouse_rect.yMax = scene_mouse_rect.yMin + scene_mouse.height;
+		
+		
+		//show mouse cursor in the scene cutout
+		if (scene_mouse_rect.xMin > scene_rect.xMin &&
+			scene_mouse_rect.xMax < scene_rect.xMax &&
+			scene_mouse_rect.yMin > scene_rect.yMin &&
+			scene_mouse_rect.yMax < scene_rect.yMax)
+		{
+
+			Graphics.CopyTexture(scene_mouse, 0, 0, 0, 0, scene_mouse.width, scene_mouse.height, overlay.texture, 0, 0,
+								(int)desktop.GetCursorPos().x, (int)desktop.GetCursorPos().y);
+		}
 
 		// If code is compiling, then we need to clean up the window resources before classes get re-initialized
 		if (EditorApplication.isCompiling)

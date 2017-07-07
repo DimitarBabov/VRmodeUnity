@@ -73,8 +73,14 @@ public class VR_CameraRig
 
 	public void Destroy()
 	{
-		renderTextureRightEye.Release();
-		renderTextureLeftEye.Release();
+		if(renderTextureLeftEye!=null)
+			renderTextureRightEye.Release();
+		if(renderTextureRightEye!=null)
+			renderTextureLeftEye.Release();
+
+		Editor.DestroyImmediate(LeftEye);
+		Editor.DestroyImmediate(RightEye);
+		Editor.DestroyImmediate(Head);
 		
 		VR_CameraRig.instance = null;
 	}

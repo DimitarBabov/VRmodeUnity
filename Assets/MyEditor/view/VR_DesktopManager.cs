@@ -1,13 +1,13 @@
 ﻿
 
 using UnityEngine;
-
+using UnityEditor;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-public class VR_DesktopManager {
+public class VR_DesktopManager  {
 
     public static VR_DesktopManager Instance;
 
@@ -184,11 +184,12 @@ public class VR_DesktopManager {
     private static int needReinit = 0;
 
 
-	public Texture main_texture;
+	public Texture2D main_texture;
 
 
     private bool m_forceMouseTrail = false; // Otherwise cursor is not visible
 
+	
     // Use this for initialization
     public void Start () {
 
@@ -214,7 +215,6 @@ public class VR_DesktopManager {
         if (m_forceMouseTrail)
             SetMouseTrailEnabled(false);
 
-	
 	}
 
     // Update is called once per frame

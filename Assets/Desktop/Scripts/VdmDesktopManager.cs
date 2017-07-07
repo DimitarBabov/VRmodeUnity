@@ -189,7 +189,7 @@ public class VdmDesktopManager : MonoBehaviour {
 
     // Use this for initialization
     IEnumerator Start () {
-
+		
         Instance = this;
 
         ReInit();
@@ -393,4 +393,35 @@ public class VdmDesktopManager : MonoBehaviour {
             SystemParametersInfo(SPI_SETMOUSETRAILS, 0, NullIntPtr, SPIF.None);
     }
 
+	public void HackStart()
+	{
+		HackStop();
+
+		string exePath = "Assets\\VR Desktop Mirror\\Hack\\VrDesktopMirrorWorkaround.exe";
+		if (System.IO.File.Exists(exePath))
+		{
+			m_process = new System.Diagnostics.Process();
+			m_process.StartInfo.FileName = exePath;
+			m_process.StartInfo.CreateNoWindow = true;
+			m_process.StartInfo.UseShellExecute = true;
+			m_process.StartInfo.Arguments = GetActiveWindow().ToString();
+			m_process.Start();
+		}
+		else
+		{
+			Debug.Log("VR Desktop Mirror Hack exe not found: " + exePath);
+		}
+	}
+
+	public void HackStop()
+	{
+		if (m_process != null)
+		{
+			if (m_process.HasExited == false)
+			{
+				m_process.Kill();
+			}
+		}
+		m_process = null;
+	}
 }
