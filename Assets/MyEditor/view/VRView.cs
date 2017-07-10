@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.VR;
@@ -18,12 +19,12 @@ sealed class VRView
 	CVRSystem hmd;
 	VR_Overlay overlay;	
 	VR_CameraRig vr_cam;
-	VR_DesktopManager desktop;
+	VR_DesktopManager desktop;	
 	Texture scene_cutout;
 	Texture scene_mouse;
 	Rect scene_rect = new Rect();
 	Rect scene_mouse_rect = new Rect();
-
+	float start_time =0f , update_time= 0f;
 	public static bool viewDisabled = true;
 	public Rect guiRect { get; private set; }
 	
@@ -35,6 +36,7 @@ sealed class VRView
 
 	public void Enable()
 	{
+		start_time = Time.time;
 		if (Application.isPlaying)
 			return;
 
@@ -42,8 +44,7 @@ sealed class VRView
 
 		EditorApplication.playmodeStateChanged += OnPlaymodeStateChanged;
 		EditorApplication.update += Update;
-
-
+		
 		//Initialize VR
 		var error = EVRInitError.None;
 
@@ -73,6 +74,7 @@ sealed class VRView
 			desktop = new VR_DesktopManager();
 			desktop.Start();
 		}
+		
 		//temporary texture assignment........................................................................
 		scene_cutout = Editor.FindObjectOfType<texture_sample>().sampleTexture;
 		scene_mouse = Editor.FindObjectOfType<texture_sample>().mouseTexture;
@@ -105,6 +107,7 @@ sealed class VRView
 		
 
 		OpenVR.Shutdown();
+		
 	}
 
 
@@ -124,19 +127,20 @@ sealed class VRView
 	
 	private void Update()
 	{
+		update_time = Time.unscaledTime;
 		if (Application.isPlaying)
 			return;
 		//copy desktop texture in overlay texture. This is neccesarry becasue desktop main texture is BGRA32 format and we need RGBA32
 		Graphics.Blit(desktop.main_texture, overlay.texture);
 		
-		scene_rect = SceneView.GetWindow<SceneView>("Scene",false).position;//!!!! doesnt allow other windows to be active
-		
+		scene_rect = SceneView.GetWindow<SceneView>("Scene", false).position;
 
-		if ((int)scene_rect.xMin < 0 || (int)scene_rect.yMin < 0)
-			return;
-
-		Graphics.CopyTexture(scene_cutout, 0, 0, 0,0, (int)scene_rect.width, (int)scene_rect.height, overlay.texture, 0, 0, (int)scene_rect.xMin, (int)scene_rect.yMin);
-
+		//if (scene_wnd.maximized)
+		{
+			if ((int)scene_rect.xMin > 0 || (int)scene_rect.yMin > 0)
+				Graphics.CopyTexture(scene_cutout, 0, 0, 0, 0, (int)scene_rect.width, (int)scene_rect.height, overlay.texture, 0, 0, (int)scene_rect.xMin, (int)scene_rect.yMin);
+			
+		}
 		//make cursor visible when inside scene view window
 		scene_mouse_rect.xMin = desktop.GetCursorPos().x;
 		scene_mouse_rect.yMin = desktop.GetCursorPos().y;
@@ -205,14 +209,30 @@ sealed class VRView
 	[MenuItem("VR Mode/Enable Edit VR %e", true)]
 	static bool ShouldShowEditorVR()
 	{
+		
 		return PlayerSettings.virtualRealitySupported;
 	}
 
-	[MenuItem("VR Mode/Reposition VR camera %q", false)]
-	static void CloseEditorVR()
+	[MenuItem("VR Mode/Reposition VR camera %z", false)]
+	static void RepositionEditorVR()
 	{
 		Debug.Log("VR camera repositioned...");
-		//VR_Overlay.instance.reposition();
+		VR_Overlay.instance.reposition(VR_CameraRig.instance.transform);
 	}
+
+	[MenuItem("VR Mode/Reposition VR camera %x", false)]
+	static void ZoomOutEditorVR()
+	{
+		Debug.Log("VR camera zoomed out...");
+		VR_Overlay.instance.ZoomOut(VR_CameraRig.instance.transform);
+	}
+
+	[MenuItem("VR Mode/Reposition VR camera %c", false)]
+	static void ZoomInEditorVR()
+	{
+		Debug.Log("VR camera zoomed in...");
+		VR_Overlay.instance.ZoomIn(VR_CameraRig.instance.transform);
+	}
+	
 }
 #endif

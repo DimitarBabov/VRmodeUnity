@@ -48,7 +48,14 @@ public class VR_DesktopManager  {
 
     [DllImport("user32.dll")]
     private static extern System.IntPtr GetActiveWindow();
-    [DllImport("DesktopCapture")]
+
+	private IntPtr unity_wnd;
+	[DllImport("user32.dll")]
+	private static extern System.Boolean ShowWindow(System.IntPtr hwnd, int show_flag);
+	[DllImport("user32.dll")]
+	private static extern System.IntPtr GetForegroundWindow();
+
+	[DllImport("DesktopCapture")]
     private static extern void DesktopCapturePlugin_Initialize();
     [DllImport("DesktopCapture")]
     private static extern int DesktopCapturePlugin_GetNDesks();
@@ -182,6 +189,7 @@ public class VR_DesktopManager  {
 
 
     private static int needReinit = 0;
+	private static bool needMinimizeUnityWnd = true;
 
 
 	public Texture2D main_texture;
@@ -193,8 +201,8 @@ public class VR_DesktopManager  {
     // Use this for initialization
     public void Start () {
 
-		
-        Instance = this;
+		unity_wnd = GetActiveWindow();
+		Instance = this;
 
         ReInit();
 
@@ -228,8 +236,25 @@ public class VR_DesktopManager  {
             UnityEngine.VR.VRSettings.renderScale = RenderScale;
 
         needReinit = DesktopCapturePlugin_GetNeedReInit();
-        
-        if (needReinit > 1000)
+		
+
+		//Work arround issues with dragging/flickering the overlay
+		//The issue appears when switching to a diffrent window in the desktop. Then
+		//Editor application.update function is not called that freaquently which causes flickering in the VR
+		//When the unity main window is minimized the the issue disapears. This is a temporary fix!!!
+		IntPtr top_wnd = GetForegroundWindow();
+		if(needMinimizeUnityWnd && unity_wnd != null && top_wnd != null && unity_wnd != top_wnd)
+		{
+			ShowWindow(unity_wnd, 2);
+			needMinimizeUnityWnd = false;
+		}else
+		{
+			needMinimizeUnityWnd = true;
+		}
+
+		
+
+		if (needReinit > 10000)
             ReInit();
 /*
         if(Input.GetKeyDown(KeyCode.R))
@@ -316,5 +341,7 @@ public class VR_DesktopManager  {
         else
             SystemParametersInfo(SPI_SETMOUSETRAILS, 0, NullIntPtr, SPIF.None);
     }
+
+
 
 }

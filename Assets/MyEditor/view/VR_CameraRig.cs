@@ -22,7 +22,8 @@ public class VR_CameraRig
 	RenderTexture renderTextureRightEye;
 	Camera leftEyeCam;
 	Camera rightEyeCam;
-
+	public Transform transform;
+	public int update_count = 0;
 	static public VR_CameraRig instance { get; private set; }
 
 	public void Create()
@@ -35,6 +36,7 @@ public class VR_CameraRig
 		}
 
 		Head = EditorUtility.CreateGameObjectWithHideFlags("VRHead", HideFlags.HideAndDontSave);
+		transform = Head.transform;
 
 		LeftEye = EditorUtility.CreateGameObjectWithHideFlags("VRCameraLeftEye", HideFlags.HideAndDontSave, typeof(Camera));
 		leftEyeCam = LeftEye.GetComponent<Camera>();
@@ -108,8 +110,8 @@ public class VR_CameraRig
 		rightEyeCam.transform.localPosition = Head.transform.TransformPoint(pose_right_to_head.pos);
 		rightEyeCam.transform.localRotation = Head.transform.localRotation * pose_right_to_head.rot;
 
-		
 
+		update_count++;
 	}
 
 	public void SetTexture()
