@@ -189,7 +189,7 @@ public class VR_DesktopManager  {
 
 
     private static int needReinit = 0;
-	private static bool needMinimizeUnityWnd = true;
+	private static bool isUnityTopWnd = true;
 
 
 	public Texture2D main_texture;
@@ -243,13 +243,13 @@ public class VR_DesktopManager  {
 		//Editor application.update function is not called that freaquently which causes flickering in the VR
 		//When the unity main window is minimized the the issue disapears. This is a temporary fix!!!
 		IntPtr top_wnd = GetForegroundWindow();
-		if(needMinimizeUnityWnd && unity_wnd != null && top_wnd != null && unity_wnd != top_wnd)
+		if(isUnityTopWnd && unity_wnd != null && top_wnd != null && unity_wnd != top_wnd)
 		{
 			ShowWindow(unity_wnd, 2);
-			needMinimizeUnityWnd = false;
+			isUnityTopWnd = false;
 		}else
 		{
-			needMinimizeUnityWnd = true;
+			isUnityTopWnd = true;
 		}
 
 		
@@ -342,6 +342,10 @@ public class VR_DesktopManager  {
             SystemParametersInfo(SPI_SETMOUSETRAILS, 0, NullIntPtr, SPIF.None);
     }
 
+	public bool isUnityWndOnTop()
+	{
+		return unity_wnd == GetForegroundWindow();
+	}
 
 
 }

@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.VR;
@@ -9,12 +10,32 @@ using Valve.VR;
 #endif
 using UnityEditor;
 
-sealed class VRView 
+//[ExecuteInEditMode]
+sealed class VRView
 {
+	#region FRAME RATE GENERATOR DECLARATIONS
+	public IntPtr interactionWindow;
+	IntPtr hMainWindow;
+	IntPtr oldWndProcPtr;
+	IntPtr newWndProcPtr;
+	WndProcDelegate newWndProc;
+	bool isFrameGeneratorRunning = false;
+	private System.Diagnostics.Process m_process = null;
+
+	[DllImport("user32.dll")]
+	static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+	[DllImport("user32.dll")]
+	static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+	[DllImport("user32.dll")]
+	private static extern System.IntPtr GetActiveWindow();
+#endregion
+
 	const string k_ShowDeviceView = "VRView.ShowDeviceView";
 	const string k_UseCustomPreviewCamera = "VRView.UseCustomPreviewCamera";
 	const string k_LaunchOnExitPlaymode = "VRView.LaunchOnExitPlaymode";
-	
+
 	//OpenVR stuff
 	CVRSystem hmd;
 	VR_Overlay overlay;	
@@ -23,11 +44,9 @@ sealed class VRView
 	Texture scene_cutout;
 	Texture scene_mouse;
 	Rect scene_rect = new Rect();
-	Rect scene_mouse_rect = new Rect();
-	float start_time =0f , update_time= 0f;
+	Rect scene_mouse_rect = new Rect();	
 	public static bool viewDisabled = true;
 	public Rect guiRect { get; private set; }
-	
 
 	static VRView CreateInstance()
 	{
@@ -36,14 +55,16 @@ sealed class VRView
 
 	public void Enable()
 	{
-		start_time = Time.time;
+		
 		if (Application.isPlaying)
 			return;
+
+		StartFrameRateGenerator();
 
 		viewDisabled = false;
 
 		EditorApplication.playmodeStateChanged += OnPlaymodeStateChanged;
-		EditorApplication.update += Update;
+		//EditorApplication.update += Update;
 		
 		//Initialize VR
 		var error = EVRInitError.None;
@@ -89,7 +110,7 @@ sealed class VRView
 		viewDisabled = true;
 
 		EditorApplication.playmodeStateChanged -= OnPlaymodeStateChanged;
-		EditorApplication.update -= Update;
+		//EditorApplication.update -= Update;
 		
 		if (vr_cam != null )
 		{
@@ -103,11 +124,10 @@ sealed class VRView
 			overlay.Destroy();
 			overlay = null;
 		}
-
 		
 
 		OpenVR.Shutdown();
-		
+		StopFrameRateGenerator();
 	}
 
 
@@ -127,38 +147,36 @@ sealed class VRView
 	
 	private void Update()
 	{
-		update_time = Time.unscaledTime;
-		if (Application.isPlaying)
-			return;
+
 		//copy desktop texture in overlay texture. This is neccesarry becasue desktop main texture is BGRA32 format and we need RGBA32
 		Graphics.Blit(desktop.main_texture, overlay.texture);
 		
 		scene_rect = SceneView.GetWindow<SceneView>("Scene", false).position;
 
-		//if (scene_wnd.maximized)
+		if (desktop.isUnityWndOnTop())
 		{
 			if ((int)scene_rect.xMin > 0 || (int)scene_rect.yMin > 0)
 				Graphics.CopyTexture(scene_cutout, 0, 0, 0, 0, (int)scene_rect.width, (int)scene_rect.height, overlay.texture, 0, 0, (int)scene_rect.xMin, (int)scene_rect.yMin);
-			
-		}
-		//make cursor visible when inside scene view window
-		scene_mouse_rect.xMin = desktop.GetCursorPos().x;
-		scene_mouse_rect.yMin = desktop.GetCursorPos().y;
-		scene_mouse_rect.xMax = scene_mouse_rect.xMin + scene_mouse.width;
-		scene_mouse_rect.yMax = scene_mouse_rect.yMin + scene_mouse.height;
-		
-		
-		//show mouse cursor in the scene cutout
-		if (scene_mouse_rect.xMin > scene_rect.xMin &&
-			scene_mouse_rect.xMax < scene_rect.xMax &&
-			scene_mouse_rect.yMin > scene_rect.yMin &&
-			scene_mouse_rect.yMax < scene_rect.yMax)
-		{
 
-			Graphics.CopyTexture(scene_mouse, 0, 0, 0, 0, scene_mouse.width, scene_mouse.height, overlay.texture, 0, 0,
-								(int)desktop.GetCursorPos().x, (int)desktop.GetCursorPos().y);
-		}
 
+			//make cursor visible when inside scene view window
+			scene_mouse_rect.xMin = desktop.GetCursorPos().x;
+			scene_mouse_rect.yMin = desktop.GetCursorPos().y;
+			scene_mouse_rect.xMax = scene_mouse_rect.xMin + scene_mouse.width;
+			scene_mouse_rect.yMax = scene_mouse_rect.yMin + scene_mouse.height;
+
+
+			//show mouse cursor in the scene cutout
+			if (scene_mouse_rect.xMin > scene_rect.xMin &&
+				scene_mouse_rect.xMax < scene_rect.xMax &&
+				scene_mouse_rect.yMin > scene_rect.yMin &&
+				scene_mouse_rect.yMax < scene_rect.yMax)
+			{
+
+				Graphics.CopyTexture(scene_mouse, 0, 0, 0, 0, scene_mouse.width, scene_mouse.height, overlay.texture, 0, 0,
+									(int)desktop.GetCursorPos().x, (int)desktop.GetCursorPos().y);
+			}
+		}
 		// If code is compiling, then we need to clean up the window resources before classes get re-initialized
 		if (EditorApplication.isCompiling)
 		{
@@ -172,8 +190,82 @@ sealed class VRView
 
 	}
 
-	
+	#region Frame Rate generator functions
 
+	IntPtr wndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
+	{
+		if (msg == 1741)
+		{
+			//Debug.Log(msg);
+			Update();
+		}
+		return CallWindowProc(oldWndProcPtr, hWnd, msg, wParam, lParam);
+	}
+
+	private void StartFrameRateGenerator()
+	{
+		if (isFrameGeneratorRunning)
+			return;
+
+		hMainWindow = GetActiveWindow();
+		newWndProc = new WndProcDelegate(wndProc);
+		newWndProcPtr = Marshal.GetFunctionPointerForDelegate(newWndProc);
+		oldWndProcPtr = SetWindowLongPtr(hMainWindow, -4, newWndProcPtr);
+		isFrameGeneratorRunning = true;
+
+		HackStart();
+	}
+
+	private void StopFrameRateGenerator()
+	{
+		HackStop();
+		Debug.Log("Uninstall Hook");
+		if (!isFrameGeneratorRunning) return;
+		SetWindowLongPtr(hMainWindow, -4, oldWndProcPtr);
+		hMainWindow = IntPtr.Zero;
+		oldWndProcPtr = IntPtr.Zero;
+		newWndProcPtr = IntPtr.Zero;
+		newWndProc = null;
+		isFrameGeneratorRunning = false;
+
+	}
+
+	public void HackStart()
+	{
+		HackStop();
+
+		string exePath = "Assets\\MyEditor\\Hack\\VrDesktopMirrorWorkaround.exe";
+		if (System.IO.File.Exists(exePath))
+		{
+			m_process = new System.Diagnostics.Process();
+			m_process.StartInfo.FileName = exePath;
+			m_process.StartInfo.CreateNoWindow = true;
+			m_process.StartInfo.UseShellExecute = true;
+			m_process.StartInfo.Arguments = hMainWindow.ToString();
+			m_process.Start();
+		}
+		else
+		{
+			Debug.Log("VR Desktop Mirror Hack exe not found: " + exePath);
+		}
+	}
+
+	public void HackStop()
+	{
+
+
+		if (m_process != null)
+		{
+			if (m_process.HasExited == false)
+			{
+				m_process.Kill();
+			}
+		}
+		m_process = null;
+	}
+
+
+#endregion
 	public static VRView instance;
 
 	[MenuItem("VR Mode/Enable VR %e", false)]
@@ -185,6 +277,7 @@ sealed class VRView
 		viewDisabled = !viewDisabled;
 
 		// Using a utility window improves performance by saving from the overhead of DockArea.OnGUI()
+		
 		if (instance == null)
 		{
 			instance = CreateInstance();
@@ -205,6 +298,7 @@ sealed class VRView
 
 		//EditorWindow.GetWindow<VRView>(true, "VR Mode", true);
 	}
+		
 
 	[MenuItem("VR Mode/Enable Edit VR %e", true)]
 	static bool ShouldShowEditorVR()
@@ -212,6 +306,7 @@ sealed class VRView
 		
 		return PlayerSettings.virtualRealitySupported;
 	}
+
 
 	[MenuItem("VR Mode/Reposition VR camera %z", false)]
 	static void RepositionEditorVR()
