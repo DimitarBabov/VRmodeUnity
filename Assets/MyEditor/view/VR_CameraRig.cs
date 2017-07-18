@@ -110,8 +110,6 @@ public class VR_CameraRig
 		rightEyeCam.transform.localPosition = Head.transform.TransformPoint(pose_right_to_head.pos);
 		rightEyeCam.transform.localRotation = Head.transform.localRotation * pose_right_to_head.rot;
 
-
-		update_count++;
 	}
 
 	public void SetTexture()

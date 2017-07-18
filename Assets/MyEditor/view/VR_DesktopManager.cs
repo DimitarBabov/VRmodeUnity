@@ -237,7 +237,7 @@ public class VR_DesktopManager  {
 
         needReinit = DesktopCapturePlugin_GetNeedReInit();
 		
-
+		/*
 		//Work arround issues with dragging/flickering the overlay
 		//The issue appears when switching to a diffrent window in the desktop. Then
 		//Editor application.update function is not called that freaquently which causes flickering in the VR
@@ -251,7 +251,7 @@ public class VR_DesktopManager  {
 		{
 			isUnityTopWnd = true;
 		}
-
+		*/
 		
 
 		if (needReinit > 10000)

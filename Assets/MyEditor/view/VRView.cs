@@ -2,6 +2,7 @@
 using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Timers;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.VR;
@@ -21,7 +22,8 @@ sealed class VRView
 	WndProcDelegate newWndProc;
 	bool isFrameGeneratorRunning = false;
 	private System.Diagnostics.Process m_process = null;
-
+	Timer timer;
+	
 	[DllImport("user32.dll")]
 	static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
 
@@ -30,7 +32,11 @@ sealed class VRView
 
 	[DllImport("user32.dll")]
 	private static extern System.IntPtr GetActiveWindow();
-#endregion
+
+	[DllImport("user32.dll", CharSet = CharSet.Auto)]
+	static extern IntPtr SendNotifyMessage(IntPtr hWnd, UInt32 Msg, IntPtr wParam, IntPtr lParam);
+
+	#endregion
 
 	const string k_ShowDeviceView = "VRView.ShowDeviceView";
 	const string k_UseCustomPreviewCamera = "VRView.UseCustomPreviewCamera";
@@ -70,9 +76,9 @@ sealed class VRView
 		var error = EVRInitError.None;
 
 		hmd = OpenVR.System;
-
+//
 		if (hmd == null)
-			hmd = OpenVR.Init(ref error, EVRApplicationType.VRApplication_Scene);
+			hmd = OpenVR.Init(ref error, EVRApplicationType.VRApplication_Scene);//Make it VRApplication_Scene if go back 
 
 		//OVERLAYS
 		if (overlay == null)
@@ -82,6 +88,7 @@ sealed class VRView
 		}
 		
 		//VR camera
+		
 		if (vr_cam == null)
 		{
 			vr_cam = new VR_CameraRig();
@@ -147,7 +154,7 @@ sealed class VRView
 	
 	private void Update()
 	{
-
+		
 		//copy desktop texture in overlay texture. This is neccesarry becasue desktop main texture is BGRA32 format and we need RGBA32
 		Graphics.Blit(desktop.main_texture, overlay.texture);
 		
@@ -186,10 +193,10 @@ sealed class VRView
 
 		desktop.Update();
 		vr_cam.Update();
-		overlay.UpdateOverlay();
+		overlay.Update();
 
 	}
-
+	
 	#region Frame Rate generator functions
 
 	IntPtr wndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
@@ -213,12 +220,18 @@ sealed class VRView
 		oldWndProcPtr = SetWindowLongPtr(hMainWindow, -4, newWndProcPtr);
 		isFrameGeneratorRunning = true;
 
-		HackStart();
+		//HackStart();
+		
+		timer = new Timer(15);
+		
+		timer.Elapsed += new System.Timers.ElapsedEventHandler(NextFrameReadyEvent);
+		timer.Start();		
+		
 	}
 
 	private void StopFrameRateGenerator()
 	{
-		HackStop();
+		//HackStop();
 		Debug.Log("Uninstall Hook");
 		if (!isFrameGeneratorRunning) return;
 		SetWindowLongPtr(hMainWindow, -4, oldWndProcPtr);
@@ -227,9 +240,18 @@ sealed class VRView
 		newWndProcPtr = IntPtr.Zero;
 		newWndProc = null;
 		isFrameGeneratorRunning = false;
-
+		
+		timer.Stop();
+		timer.Dispose();
+		timer = null;
 	}
-
+	
+	private void NextFrameReadyEvent(object source, System.Timers.ElapsedEventArgs e)
+	{
+		
+		SendNotifyMessage(hMainWindow, 1741, IntPtr.Zero, IntPtr.Zero);
+	}
+	/*
 	public void HackStart()
 	{
 		HackStop();
@@ -249,7 +271,7 @@ sealed class VRView
 			Debug.Log("VR Desktop Mirror Hack exe not found: " + exePath);
 		}
 	}
-
+	
 	public void HackStop()
 	{
 
@@ -263,8 +285,8 @@ sealed class VRView
 		}
 		m_process = null;
 	}
-
-
+	
+	*/
 #endregion
 	public static VRView instance;
 
