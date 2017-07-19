@@ -13,10 +13,11 @@ using Valve.VR;
 public class VR_Overlay 
 {
 	public RenderTexture texture;
-	private GameObject gameobject;
-	private GameObject gameobject2;
-	public Transform transform;
-	public Transform transform2;
+	private GameObject center;
+	private GameObject r1,r2,r3,r4,r5,l1,l2,l3,l4,l5;//right and left overlay game objects
+	private int numOverlays =11;
+	private float angle = 12; 
+
 	public bool curved = false;//enable for curved overlay
 	public bool antialias = false;//enable for curved overlay
 	public bool highquality = false;//enable for curved overlay
@@ -42,7 +43,6 @@ public class VR_Overlay
 	private float m_lastShowClickStart = 0;
 
 	VRTextureBounds_t textureBounds;
-	VRTextureBounds_t textureBounds2;
 
 	public VROverlayInputMethod inputMethod = VROverlayInputMethod.None;
 
@@ -51,35 +51,74 @@ public class VR_Overlay
 	private string key;
 
 	private ulong handle = OpenVR.k_ulOverlayHandleInvalid;
-	private ulong handle2 = OpenVR.k_ulOverlayHandleInvalid;
+	private ulong handle_r1= OpenVR.k_ulOverlayHandleInvalid;
+	private ulong handle_r2 = OpenVR.k_ulOverlayHandleInvalid;
+	private ulong handle_r3 = OpenVR.k_ulOverlayHandleInvalid;
+	private ulong handle_r4 = OpenVR.k_ulOverlayHandleInvalid;
+	private ulong handle_r5 = OpenVR.k_ulOverlayHandleInvalid;
 
+	private ulong handle_l1 = OpenVR.k_ulOverlayHandleInvalid;
+	private ulong handle_l2 = OpenVR.k_ulOverlayHandleInvalid;
+	private ulong handle_l3 = OpenVR.k_ulOverlayHandleInvalid;
+	private ulong handle_l4 = OpenVR.k_ulOverlayHandleInvalid;
+	private ulong handle_l5 = OpenVR.k_ulOverlayHandleInvalid;
 	public void Create(string overlay_key, string overlay_name)
 	{
-		gameobject = new GameObject("main overlay");
-		transform = gameobject.transform;
+		
 
-		gameobject2 = new GameObject("second overlay");
-		transform2 = gameobject2.transform;
+		center = new GameObject("Center overlay");
+
+		r1 = new GameObject("r1 overlay"); r1.transform.parent = center.transform; 
+		r2 = new GameObject("r2 overlay"); r2.transform.parent = r1.transform;
+		r3 = new GameObject("r3 overlay"); r3.transform.parent = r2.transform;
+		r4 = new GameObject("r4 overlay"); r4.transform.parent = r3.transform;
+		r5 = new GameObject("r5 overlay"); r5.transform.parent = r4.transform;
+
+		l1 = new GameObject("l1 overlay"); l1.transform.parent = center.transform;
+		l2 = new GameObject("l2 overlay"); l2.transform.parent = l1.transform;
+		l3 = new GameObject("l3 overlay"); l3.transform.parent = l2.transform;
+		l4 = new GameObject("l4 overlay"); l4.transform.parent = l3.transform;
+		l5 = new GameObject("l5 overlay"); l5.transform.parent = l4.transform;
+
+		orientOverlayLocal(r5.transform, 1f);
+		orientOverlayLocal(r4.transform, 1f);
+		orientOverlayLocal(r3.transform, 1f);
+		orientOverlayLocal(r2.transform, 1f);
+		orientOverlayLocal(r1.transform, 1f);
+
+		orientOverlayLocal(l5.transform, -1f);
+		orientOverlayLocal(l4.transform, -1f);
+		orientOverlayLocal(l3.transform, -1f);
+		orientOverlayLocal(l2.transform, -1f);
+		orientOverlayLocal(l1.transform, -1f);
+		
 
 		key = overlay_key;
 		var overlay = OpenVR.Overlay;
 		if (overlay != null)
 		{
-			var error = overlay.CreateOverlay(key, overlay_name /*gameObject.name*/, ref handle);
-			var error2 = overlay.CreateOverlay(key+"2", overlay_name+"2" /*gameObject.name*/, ref handle2);
+			var error = overlay.CreateOverlay(key, overlay_name , ref handle);
 
-			if (error != EVROverlayError.None)
+			var error_r1 = overlay.CreateOverlay(key + "r1", overlay_name + "r1", ref handle_r1);
+			var error_r2 = overlay.CreateOverlay(key + "r2", overlay_name + "r2", ref handle_r2);
+			var error_r3 = overlay.CreateOverlay(key + "r3", overlay_name + "r3", ref handle_r3);
+			var error_r4 = overlay.CreateOverlay(key + "r4", overlay_name + "r4", ref handle_r4);
+			var error_r5 = overlay.CreateOverlay(key + "r5", overlay_name + "r5", ref handle_r5);
+
+			var error_l1 = overlay.CreateOverlay(key + "l1", overlay_name + "l1", ref handle_l1);
+			var error_l2 = overlay.CreateOverlay(key + "l2", overlay_name + "l2", ref handle_l2);
+			var error_l3 = overlay.CreateOverlay(key + "l3", overlay_name + "l3", ref handle_l3);
+			var error_l4 = overlay.CreateOverlay(key + "l4", overlay_name + "l4", ref handle_l4);
+			var error_l5 = overlay.CreateOverlay(key + "l5", overlay_name + "l5", ref handle_l5);
+
+
+			if (error != EVROverlayError.None )
 			{
 				Debug.Log(overlay.GetOverlayErrorNameFromEnum(error));
 				//enabled = false;
 				return;
 			}
-			if (error2 != EVROverlayError.None)
-			{
-				Debug.Log(overlay.GetOverlayErrorNameFromEnum(error2));
-				//enabled = false;
-				return;
-			}
+			/*...........CHECK ALL FOR ERRORS..................*/
 		}
 		
 
@@ -94,15 +133,46 @@ public class VR_Overlay
 			if (overlay != null)
 			{
 				overlay.DestroyOverlay(handle);
-				overlay.DestroyOverlay(handle2);
+				overlay.DestroyOverlay(handle_r1);
+				overlay.DestroyOverlay(handle_r2);
+				overlay.DestroyOverlay(handle_r3);
+				overlay.DestroyOverlay(handle_r4);
+				overlay.DestroyOverlay(handle_r5);
+
+				overlay.DestroyOverlay(handle_l1);
+				overlay.DestroyOverlay(handle_l2);
+				overlay.DestroyOverlay(handle_l3);
+				overlay.DestroyOverlay(handle_l4);
+				overlay.DestroyOverlay(handle_l5);
 			}
 
 			handle = OpenVR.k_ulOverlayHandleInvalid;
-			handle2 = OpenVR.k_ulOverlayHandleInvalid;
+			handle_r1 = OpenVR.k_ulOverlayHandleInvalid;
+			handle_r2 = OpenVR.k_ulOverlayHandleInvalid;
+			handle_r3 = OpenVR.k_ulOverlayHandleInvalid;
+			handle_r4 = OpenVR.k_ulOverlayHandleInvalid;
+			handle_r5 = OpenVR.k_ulOverlayHandleInvalid;
+
+			handle_l1 = OpenVR.k_ulOverlayHandleInvalid;
+			handle_l2 = OpenVR.k_ulOverlayHandleInvalid;
+			handle_l3 = OpenVR.k_ulOverlayHandleInvalid;
+			handle_l4 = OpenVR.k_ulOverlayHandleInvalid;
+			handle_l5 = OpenVR.k_ulOverlayHandleInvalid;
 		}
 		
-		Editor.DestroyImmediate(gameobject);
-		Editor.DestroyImmediate(gameobject2);
+		Editor.DestroyImmediate(center);
+		Editor.DestroyImmediate(r1);
+		Editor.DestroyImmediate(r2);
+		Editor.DestroyImmediate(r3);
+		Editor.DestroyImmediate(r4);
+		Editor.DestroyImmediate(r5);
+
+		Editor.DestroyImmediate(l1);
+		Editor.DestroyImmediate(l2);
+		Editor.DestroyImmediate(l3);
+		Editor.DestroyImmediate(l4);
+		Editor.DestroyImmediate(l5);
+
 		VR_Overlay.instance = null;
 	}
 
@@ -113,97 +183,24 @@ public class VR_Overlay
 		if (overlay == null)
 			return;
 
-		if (texture != null)
-		{
-			var error = overlay.ShowOverlay(handle);
-			var error2 = overlay.ShowOverlay(handle2);
+		updateOverlay(handle, ref textureBounds, 0, 1);
 
-			if (error == EVROverlayError.InvalidHandle || error == EVROverlayError.UnknownOverlay)
-			{
-				if (overlay.FindOverlay(key, ref handle) != EVROverlayError.None)
-					return;
-			}
-			if (error2 == EVROverlayError.InvalidHandle || error2 == EVROverlayError.UnknownOverlay)
-			{
-				if (overlay.FindOverlay(key+"2", ref handle2) != EVROverlayError.None)
-					return;
-			}
+		updateOverlay(handle_r1, ref textureBounds, 1, 1);
+		updateOverlay(handle_r2, ref textureBounds, 2, 1);
+		updateOverlay(handle_r3, ref textureBounds, 3, 1);
+		updateOverlay(handle_r4, ref textureBounds, 4, 1);
+		updateOverlay(handle_r5, ref textureBounds, 5, 1);
 
-			var tex = new Texture_t();
-			tex.handle = texture.GetNativeTexturePtr();
-			//tex.eType = SteamVR.instance.textureType;
-			tex.eColorSpace = EColorSpace.Auto;
+		updateOverlay(handle_l1, ref textureBounds, 1, -1);
+		updateOverlay(handle_l2, ref textureBounds, 2, -1);
+		updateOverlay(handle_l3, ref textureBounds, 3, -1);
+		updateOverlay(handle_l4, ref textureBounds, 4, -1);
+		updateOverlay(handle_l5, ref textureBounds, 5, -1);
 
-			overlay.SetOverlayTexture(handle, ref tex);
-			overlay.SetOverlayTexture(handle2, ref tex);
 
-			overlay.SetOverlayAlpha(handle, alpha);
-			overlay.SetOverlayWidthInMeters(handle, scale/2);
-			overlay.SetOverlayAutoCurveDistanceRangeInMeters(handle, curvedRange.x, curvedRange.y);
-			
-			overlay.SetOverlayAlpha(handle2, alpha);
-			overlay.SetOverlayWidthInMeters(handle2, scale/2);
-			overlay.SetOverlayAutoCurveDistanceRangeInMeters(handle2, curvedRange.x, curvedRange.y);
-			
-			textureBounds = new VRTextureBounds_t();
-			textureBounds.uMin = (0 + uvOffset.x) * uvOffset.z;
-			textureBounds.vMin = (1 + uvOffset.y) * uvOffset.w;
-			textureBounds.uMax = (1 + uvOffset.x) * uvOffset.z-0.5f;
-			textureBounds.vMax = (0 + uvOffset.y) * uvOffset.w;
-			// Account for textures being upside-down in Unity.
-			textureBounds.vMin = 1.0f - textureBounds.vMin;
-			textureBounds.vMax = 1.0f - textureBounds.vMax;			
-			overlay.SetOverlayTextureBounds(handle, ref textureBounds);
 
-			textureBounds2 = new VRTextureBounds_t();
-			textureBounds2.uMin = (0 + uvOffset.x) * uvOffset.z +0.5f;
-			textureBounds2.vMin = (1 + uvOffset.y) * uvOffset.w;
-			textureBounds2.uMax = (1 + uvOffset.x) * uvOffset.z;
-			textureBounds2.vMax = (0 + uvOffset.y) * uvOffset.w;
-			// Account for textures being upside-down in Unity.
-			textureBounds2.vMin = 1.0f - textureBounds2.vMin;
-			textureBounds2.vMax = 1.0f - textureBounds2.vMax;
 
-			overlay.SetOverlayTextureBounds(handle2, ref textureBounds2);
-
-			/*
-			var vecMouseScale = new HmdVector2_t();
-			vecMouseScale.v0 = mouseScale.x;
-			vecMouseScale.v1 = mouseScale.y;
-			overlay.SetOverlayMouseScale(handle, ref vecMouseScale);
-
-			*/
-
-			UpdateTransform();
-
-			overlay.SetOverlayInputMethod(handle, inputMethod);
-			//overlay.SetOverlayInputMethod(handle2, inputMethod);
-
-			if (curved || antialias)
-				highquality = true;
-
-			if (highquality)
-			{
-				overlay.SetHighQualityOverlay(handle);
-				overlay.SetOverlayFlag(handle, VROverlayFlags.Curved, curved);
-				overlay.SetOverlayFlag(handle, VROverlayFlags.RGSS4X, antialias);
-				/*
-				overlay.SetHighQualityOverlay(handle2);
-				overlay.SetOverlayFlag(handle2, VROverlayFlags.Curved, curved);
-				overlay.SetOverlayFlag(handle2, VROverlayFlags.RGSS4X, antialias);*/
-			}
-			else if (overlay.GetHighQualityOverlay() == handle)
-			{
-				overlay.SetHighQualityOverlay(OpenVR.k_ulOverlayHandleInvalid);
-				
-			}
-		}
-		else
-		{
-			overlay.HideOverlay(handle);
-			overlay.HideOverlay(handle2);
-		}
-		
+		UpdateTransform();
 	}
 	
 	
@@ -234,35 +231,91 @@ public class VR_Overlay
 				rotationDestination = m_rotationNormal;
 			}
 
-			if (transform.position != positionDestination)
-				transform.position = positionDestination;
+			if (center.transform.position != positionDestination)
+				center.transform.position = positionDestination;
 
 
-			if (transform.rotation != rotationDestination)
-				transform.rotation =  rotationDestination;
+			if (center.transform.rotation != rotationDestination)
+				center.transform.rotation =  rotationDestination;
 
 		}
+
+		setOverlayTransform(handle,ref center);
+
+		setOverlayTransform(handle_r1, ref r1);
+		setOverlayTransform(handle_r2, ref r2);
+		setOverlayTransform(handle_r3, ref r3);
+		setOverlayTransform(handle_r4, ref r4);
+		setOverlayTransform(handle_r5, ref r5);
+
+		setOverlayTransform(handle_l1, ref l1);
+		setOverlayTransform(handle_l2, ref l2);
+		setOverlayTransform(handle_l3, ref l3);
+		setOverlayTransform(handle_l4, ref l4);
+		setOverlayTransform(handle_l5, ref l5);
+
+	}
+	
+	private void orientOverlayLocal(Transform overlay_transform,  float sign)
+	{
+		float overlay_length = scale / numOverlays;		
+		overlay_transform.localPosition = new Vector3(sign * overlay_length, 0, 0);
+		overlay_transform.RotateAround(new Vector3(sign * overlay_length / 2f, 0, 0), new Vector3(0, 1, 0), sign * angle);
+	}
+
+	private void updateOverlay(ulong handle, ref VRTextureBounds_t textureBounds, int shift, float sign)
+	{
 		
+		var overlay = OpenVR.Overlay;
 
-		SteamVR_Utils.RigidTransform rigid_transform = new SteamVR_Utils.RigidTransform(transform);
-		//rigid_transform.pos.z += distance;
-		var t = rigid_transform.ToHmdMatrix34();
-		overlay.SetOverlayTransformAbsolute(handle, ETrackingUniverseOrigin.TrackingUniverseStanding, ref t);
+		if (overlay == null)
+			return;
+
+		if (texture != null)
+		{
+			var error = overlay.ShowOverlay(handle);
+
+			if (error == EVROverlayError.InvalidHandle || error == EVROverlayError.UnknownOverlay)
+			{
+				if (overlay.FindOverlay(key, ref handle) != EVROverlayError.None)
+					return;
+			}
 
 
+			var tex = new Texture_t();
+			tex.handle = texture.GetNativeTexturePtr();
+			//tex.eType = SteamVR.instance.textureType;
+			tex.eColorSpace = EColorSpace.Auto;
 
-		transform2 = transform;
-		transform2.Translate(1.5f,0f,0f);
-		transform2.RotateAround(new Vector3(0.75f, 0, 0), new Vector3(0, 1, 0), 10);
-		SteamVR_Utils.RigidTransform rigid_transform2 = new SteamVR_Utils.RigidTransform(transform2);
-		
+			overlay.SetOverlayTexture(handle, ref tex);
+			overlay.SetOverlayAlpha(handle, alpha);
+			overlay.SetOverlayWidthInMeters(handle, scale / numOverlays);
+			//overlay.SetOverlayAutoCurveDistanceRangeInMeters(handle, curvedRange.x, curvedRange.y);
 
-		t = rigid_transform2.ToHmdMatrix34();
-		overlay.SetOverlayTransformAbsolute(handle2, ETrackingUniverseOrigin.TrackingUniverseStanding, ref t);
-
+			textureBounds = new VRTextureBounds_t();
+			textureBounds.uMin = (0 + uvOffset.x) * uvOffset.z + 0.5f +shift*sign /numOverlays -1f/(2f * numOverlays);
+			textureBounds.vMin = (1 + uvOffset.y) * uvOffset.w; 
+			textureBounds.uMax = (0 + uvOffset.x) * uvOffset.z + 0.5f + shift * sign / numOverlays + 1f / (2f * numOverlays);
+			textureBounds.vMax = (0 + uvOffset.y) * uvOffset.w;
+			// Account for textures being upside-down in Unity.
+			textureBounds.vMin = 1.0f - textureBounds.vMin;
+			textureBounds.vMax = 1.0f - textureBounds.vMax;
+			overlay.SetOverlayTextureBounds(handle, ref textureBounds);
+			overlay.SetOverlayInputMethod(handle, inputMethod);
+		}else
+		{
+			overlay.HideOverlay(handle);
+		}
 
 	}
 
+	private void setOverlayTransform(ulong handle, ref GameObject overlay_object)
+	{
+		var overlay = OpenVR.Overlay;
+		SteamVR_Utils.RigidTransform rigid_transform = new SteamVR_Utils.RigidTransform(overlay_object.transform);
+		var t = rigid_transform.ToHmdMatrix34();
+		overlay.SetOverlayTransformAbsolute(handle, ETrackingUniverseOrigin.TrackingUniverseStanding, ref t);
+	}
 
 	public void ZoomIn(Transform vr_cam_head)
 	{
@@ -283,7 +336,7 @@ public class VR_Overlay
 	public void reposition(Transform vr_head)
 	{
 		m_zoom = false;
-		m_positionNormal = vr_head.position + vr_head.rotation * new Vector3(0, 0, distance);
+		m_positionNormal = vr_head.position + vr_head.rotation * new Vector3(0, -0.375f, distance);
 		m_rotationNormal = vr_head.rotation;
 	}
 
