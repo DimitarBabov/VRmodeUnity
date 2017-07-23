@@ -107,8 +107,8 @@ sealed class VRView
 		scene_cutout = Editor.FindObjectOfType<texture_sample>().sampleTexture;
 		scene_mouse = Editor.FindObjectOfType<texture_sample>().mouseTexture;
 
-		overlay.texture = new RenderTexture(desktop.main_texture.width, desktop.main_texture.height, 16);
-		Graphics.Blit(desktop.main_texture, overlay.texture);
+		overlay.desktop_texture = new RenderTexture(desktop.main_texture.width, desktop.main_texture.height, 16);
+		Graphics.Blit(desktop.main_texture, overlay.desktop_texture);
 		
 	}
 
@@ -154,16 +154,17 @@ sealed class VRView
 	
 	private void Update()
 	{
-		
+
+
 		//copy desktop texture in overlay texture. This is neccesarry becasue desktop main texture is BGRA32 format and we need RGBA32
-		Graphics.Blit(desktop.main_texture, overlay.texture);
+		Graphics.Blit(desktop.main_texture, overlay.desktop_texture);
 		
 		scene_rect = SceneView.GetWindow<SceneView>("Scene", false).position;
 
 		if (desktop.isUnityWndOnTop())
 		{
 			if ((int)scene_rect.xMin > 0 || (int)scene_rect.yMin > 0)
-				Graphics.CopyTexture(scene_cutout, 0, 0, 0, 0, (int)scene_rect.width, (int)scene_rect.height, overlay.texture, 0, 0, (int)scene_rect.xMin, (int)scene_rect.yMin);
+				Graphics.CopyTexture(scene_cutout, 0, 0, 0, 0, (int)scene_rect.width, (int)scene_rect.height, overlay.desktop_texture, 0, 0, (int)scene_rect.xMin, (int)scene_rect.yMin);
 
 
 			//make cursor visible when inside scene view window
@@ -180,7 +181,7 @@ sealed class VRView
 				scene_mouse_rect.yMax < scene_rect.yMax)
 			{
 
-				Graphics.CopyTexture(scene_mouse, 0, 0, 0, 0, scene_mouse.width, scene_mouse.height, overlay.texture, 0, 0,
+				Graphics.CopyTexture(scene_mouse, 0, 0, 0, 0, scene_mouse.width, scene_mouse.height, overlay.desktop_texture, 0, 0,
 									(int)desktop.GetCursorPos().x, (int)desktop.GetCursorPos().y);
 			}
 		}

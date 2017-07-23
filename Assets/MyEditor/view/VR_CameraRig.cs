@@ -189,7 +189,6 @@ public class VR_CameraRig
 		VR_textureLeftEye.eColorSpace = EColorSpace.Auto;
 		VR_textureRightEye.eColorSpace = EColorSpace.Auto;
 
-
 		if (!SteamVR.active && !SteamVR.usingNativeSupport)
 		{
 

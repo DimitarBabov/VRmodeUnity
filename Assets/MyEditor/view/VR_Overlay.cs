@@ -12,16 +12,20 @@ using Valve.VR;
 //[ExecuteInEditMode]
 public class VR_Overlay 
 {
-	public RenderTexture texture;
+	public VR_ViveCamera keyboard_camera;
+	public RenderTexture desktop_texture;
+	//public RenderTexture keyboard_texture;
 	private GameObject center;
 	private GameObject r1,r2,r3,r4,r5,l1,l2,l3,l4,l5;//right and left overlay game objects
+	private GameObject keyboard;
 	private int numOverlays =11;
-	private float angle = 12; 
+	private float angle = 10; 
 
 	public bool curved = false;//enable for curved overlay
 	public bool antialias = false;//enable for curved overlay
 	public bool highquality = false;//enable for curved overlay
-	public float scale = 3.0f;			// size of overlay view
+	public float desktop_overlay_scale = 3.0f;          // size of overlay view
+	public float keyboard_overlay_scale = 2.0f;
 	public float distance = 1.25f;		// distance from surface
 	public float alpha = 1.0f;          // opacity 0..1
 	public float zoom_step = 0.02f;
@@ -31,17 +35,11 @@ public class VR_Overlay
 	public Vector2 curvedRange = new Vector2(1.5f, 1.5f);
 
 	private bool m_zoom = false;
-	private bool m_zoomWithFollowCursor = false;
 	private Vector3 m_positionNormal;
 	private Quaternion m_rotationNormal;
 	private Vector3 m_positionZoomed;
 	private Quaternion m_rotationZoomed;
-
-	private float m_positionAnimationStart = 0;
-
-	// Keyboard and Mouse
-	private float m_lastShowClickStart = 0;
-
+	
 	VRTextureBounds_t textureBounds;
 
 	public VROverlayInputMethod inputMethod = VROverlayInputMethod.None;
@@ -62,9 +60,13 @@ public class VR_Overlay
 	private ulong handle_l3 = OpenVR.k_ulOverlayHandleInvalid;
 	private ulong handle_l4 = OpenVR.k_ulOverlayHandleInvalid;
 	private ulong handle_l5 = OpenVR.k_ulOverlayHandleInvalid;
+	private ulong handle_keyboard = OpenVR.k_ulOverlayHandleInvalid;
+
 	public void Create(string overlay_key, string overlay_name)
 	{
-		
+
+		keyboard_camera = new VR_ViveCamera();
+		keyboard_camera.Create();
 
 		center = new GameObject("Center overlay");
 
@@ -80,6 +82,8 @@ public class VR_Overlay
 		l4 = new GameObject("l4 overlay"); l4.transform.parent = l3.transform;
 		l5 = new GameObject("l5 overlay"); l5.transform.parent = l4.transform;
 
+		keyboard = new GameObject("keyboard view overlay"); keyboard.transform.parent = center.transform;
+
 		orientOverlayLocal(r5.transform, 1f);
 		orientOverlayLocal(r4.transform, 1f);
 		orientOverlayLocal(r3.transform, 1f);
@@ -91,12 +95,17 @@ public class VR_Overlay
 		orientOverlayLocal(l3.transform, -1f);
 		orientOverlayLocal(l2.transform, -1f);
 		orientOverlayLocal(l1.transform, -1f);
+
+		orientKeyboardLayout(keyboard.transform);
 		
 
 		key = overlay_key;
 		var overlay = OpenVR.Overlay;
 		if (overlay != null)
 		{
+
+			var error_keyboard = overlay.CreateOverlay(key + "keyboard", "keyboard", ref handle_keyboard);
+
 			var error = overlay.CreateOverlay(key, overlay_name , ref handle);
 
 			var error_r1 = overlay.CreateOverlay(key + "r1", overlay_name + "r1", ref handle_r1);
@@ -111,13 +120,20 @@ public class VR_Overlay
 			var error_l4 = overlay.CreateOverlay(key + "l4", overlay_name + "l4", ref handle_l4);
 			var error_l5 = overlay.CreateOverlay(key + "l5", overlay_name + "l5", ref handle_l5);
 
+			
 
-			if (error != EVROverlayError.None )
-			{
-				Debug.Log(overlay.GetOverlayErrorNameFromEnum(error));
-				//enabled = false;
-				return;
-			}
+			if (error != EVROverlayError.None ){ Debug.Log(overlay.GetOverlayErrorNameFromEnum(error)); return;}
+			if (error_r1 != EVROverlayError.None) { Debug.Log(overlay.GetOverlayErrorNameFromEnum(error_r1)); return; }
+			if (error_r2 != EVROverlayError.None) { Debug.Log(overlay.GetOverlayErrorNameFromEnum(error_r2)); return; }
+			if (error_r3 != EVROverlayError.None) { Debug.Log(overlay.GetOverlayErrorNameFromEnum(error_r3)); return; }
+			if (error_r4 != EVROverlayError.None) { Debug.Log(overlay.GetOverlayErrorNameFromEnum(error_r4)); return; }
+			if (error_r5 != EVROverlayError.None) { Debug.Log(overlay.GetOverlayErrorNameFromEnum(error_r5)); return; }
+			if (error_l1 != EVROverlayError.None) { Debug.Log(overlay.GetOverlayErrorNameFromEnum(error_l1)); return; }
+			if (error_l2 != EVROverlayError.None) { Debug.Log(overlay.GetOverlayErrorNameFromEnum(error_l2)); return; }
+			if (error_l3 != EVROverlayError.None) { Debug.Log(overlay.GetOverlayErrorNameFromEnum(error_l3)); return; }
+			if (error_l4 != EVROverlayError.None) { Debug.Log(overlay.GetOverlayErrorNameFromEnum(error_l4)); return; }
+			if (error_l5 != EVROverlayError.None) { Debug.Log(overlay.GetOverlayErrorNameFromEnum(error_l5)); return; }
+			
 			/*...........CHECK ALL FOR ERRORS..................*/
 		}
 		
@@ -144,6 +160,9 @@ public class VR_Overlay
 				overlay.DestroyOverlay(handle_l3);
 				overlay.DestroyOverlay(handle_l4);
 				overlay.DestroyOverlay(handle_l5);
+
+				overlay.DestroyOverlay(handle_keyboard);
+				keyboard_camera.Destroy();
 			}
 
 			handle = OpenVR.k_ulOverlayHandleInvalid;
@@ -158,6 +177,8 @@ public class VR_Overlay
 			handle_l3 = OpenVR.k_ulOverlayHandleInvalid;
 			handle_l4 = OpenVR.k_ulOverlayHandleInvalid;
 			handle_l5 = OpenVR.k_ulOverlayHandleInvalid;
+
+			handle_keyboard = OpenVR.k_ulOverlayHandleInvalid;
 		}
 		
 		Editor.DestroyImmediate(center);
@@ -166,12 +187,13 @@ public class VR_Overlay
 		Editor.DestroyImmediate(r3);
 		Editor.DestroyImmediate(r4);
 		Editor.DestroyImmediate(r5);
-
 		Editor.DestroyImmediate(l1);
 		Editor.DestroyImmediate(l2);
 		Editor.DestroyImmediate(l3);
 		Editor.DestroyImmediate(l4);
 		Editor.DestroyImmediate(l5);
+		Editor.DestroyImmediate(keyboard);
+
 
 		VR_Overlay.instance = null;
 	}
@@ -183,22 +205,24 @@ public class VR_Overlay
 		if (overlay == null)
 			return;
 
-		updateOverlay(handle, ref textureBounds, 0, 1);
+		keyboard_camera.Update();
+		updateKeyboardOverlay(handle_keyboard, ref textureBounds);
 
-		updateOverlay(handle_r1, ref textureBounds, 1, 1);
-		updateOverlay(handle_r2, ref textureBounds, 2, 1);
-		updateOverlay(handle_r3, ref textureBounds, 3, 1);
-		updateOverlay(handle_r4, ref textureBounds, 4, 1);
-		updateOverlay(handle_r5, ref textureBounds, 5, 1);
+		updateDesktopOverlay(handle, ref textureBounds, 0, 1);
 
-		updateOverlay(handle_l1, ref textureBounds, 1, -1);
-		updateOverlay(handle_l2, ref textureBounds, 2, -1);
-		updateOverlay(handle_l3, ref textureBounds, 3, -1);
-		updateOverlay(handle_l4, ref textureBounds, 4, -1);
-		updateOverlay(handle_l5, ref textureBounds, 5, -1);
+		updateDesktopOverlay(handle_r1, ref textureBounds, 1, 1);
+		updateDesktopOverlay(handle_r2, ref textureBounds, 2, 1);
+		updateDesktopOverlay(handle_r3, ref textureBounds, 3, 1);
+		updateDesktopOverlay(handle_r4, ref textureBounds, 4, 1);
+		updateDesktopOverlay(handle_r5, ref textureBounds, 5, 1);
 
+		updateDesktopOverlay(handle_l1, ref textureBounds, 1, -1);
+		updateDesktopOverlay(handle_l2, ref textureBounds, 2, -1);
+		updateDesktopOverlay(handle_l3, ref textureBounds, 3, -1);
+		updateDesktopOverlay(handle_l4, ref textureBounds, 4, -1);
+		updateDesktopOverlay(handle_l5, ref textureBounds, 5, -1);
 
-
+		
 
 		UpdateTransform();
 	}
@@ -254,16 +278,25 @@ public class VR_Overlay
 		setOverlayTransform(handle_l4, ref l4);
 		setOverlayTransform(handle_l5, ref l5);
 
+		setOverlayTransform(handle_keyboard, ref keyboard);
+
 	}
 	
 	private void orientOverlayLocal(Transform overlay_transform,  float sign)
 	{
-		float overlay_length = scale / numOverlays;		
+		float overlay_length = desktop_overlay_scale / numOverlays;		
 		overlay_transform.localPosition = new Vector3(sign * overlay_length, 0, 0);
 		overlay_transform.RotateAround(new Vector3(sign * overlay_length / 2f, 0, 0), new Vector3(0, 1, 0), sign * angle);
 	}
 
-	private void updateOverlay(ulong handle, ref VRTextureBounds_t textureBounds, int shift, float sign)
+	private void orientKeyboardLayout(Transform overlay_transform)
+	{
+		overlay_transform.localPosition = new Vector3(0, -1, 0);
+		overlay_transform.RotateAround(overlay_transform.localPosition, new Vector3(1, 0, 0), 65);
+
+	}
+
+	private void updateDesktopOverlay(ulong handle, ref VRTextureBounds_t textureBounds, int shift, float sign)
 	{
 		
 		var overlay = OpenVR.Overlay;
@@ -271,7 +304,7 @@ public class VR_Overlay
 		if (overlay == null)
 			return;
 
-		if (texture != null)
+		if (desktop_texture != null)
 		{
 			var error = overlay.ShowOverlay(handle);
 
@@ -283,13 +316,13 @@ public class VR_Overlay
 
 
 			var tex = new Texture_t();
-			tex.handle = texture.GetNativeTexturePtr();
+			tex.handle = desktop_texture.GetNativeTexturePtr();
 			//tex.eType = SteamVR.instance.textureType;
 			tex.eColorSpace = EColorSpace.Auto;
 
 			overlay.SetOverlayTexture(handle, ref tex);
 			overlay.SetOverlayAlpha(handle, alpha);
-			overlay.SetOverlayWidthInMeters(handle, scale / numOverlays);
+			overlay.SetOverlayWidthInMeters(handle, desktop_overlay_scale / numOverlays);
 			//overlay.SetOverlayAutoCurveDistanceRangeInMeters(handle, curvedRange.x, curvedRange.y);
 
 			textureBounds = new VRTextureBounds_t();
@@ -303,6 +336,52 @@ public class VR_Overlay
 			overlay.SetOverlayTextureBounds(handle, ref textureBounds);
 			overlay.SetOverlayInputMethod(handle, inputMethod);
 		}else
+		{
+			overlay.HideOverlay(handle);
+		}
+
+	}
+
+	private void updateKeyboardOverlay(ulong handle, ref VRTextureBounds_t textureBounds)
+	{
+		var overlay = OpenVR.Overlay;
+
+		if (overlay == null)
+			return;
+
+		if (keyboard_camera.texture != null)
+		{
+			var error = overlay.ShowOverlay(handle);
+
+			if (error == EVROverlayError.InvalidHandle || error == EVROverlayError.UnknownOverlay)
+			{
+				if (overlay.FindOverlay(key, ref handle) != EVROverlayError.None)
+					return;
+			}
+
+
+			var tex = new Texture_t();
+			tex.handle = keyboard_camera.texture.GetNativeTexturePtr();// desktop_texture.GetNativeTexturePtr();
+			//tex.eType = SteamVR.instance.textureType;
+			tex.eColorSpace = EColorSpace.Auto;
+
+			overlay.SetOverlayTexture(handle, ref tex);
+			overlay.SetOverlayAlpha(handle, alpha);
+			overlay.SetOverlayWidthInMeters(handle, keyboard_overlay_scale);
+			//overlay.SetOverlayAutoCurveDistanceRangeInMeters(handle, curvedRange.x, curvedRange.y);
+
+			textureBounds = new VRTextureBounds_t();
+			textureBounds.uMin = (0 + uvOffset.x) * uvOffset.z;
+			textureBounds.vMin = (1 + uvOffset.y) * uvOffset.w - 0.15f;
+			textureBounds.uMax = (1 + uvOffset.x) * uvOffset.z - 0.5f;
+			textureBounds.vMax = (0 + uvOffset.y) * uvOffset.w + 0.15f;
+			// Account for textures being upside-down in Unity.
+			textureBounds.vMin = 1.0f - textureBounds.vMin;
+			textureBounds.vMax = 1.0f - textureBounds.vMax;
+			overlay.SetOverlayTextureBounds(handle, ref textureBounds);
+			overlay.SetOverlayInputMethod(handle, inputMethod);
+		}
+		else
 		{
 			overlay.HideOverlay(handle);
 		}
@@ -336,7 +415,7 @@ public class VR_Overlay
 	public void reposition(Transform vr_head)
 	{
 		m_zoom = false;
-		m_positionNormal = vr_head.position + vr_head.rotation * new Vector3(0, -0.375f, distance);
+		m_positionNormal = vr_head.position + vr_head.rotation * new Vector3(0, 0, distance);
 		m_rotationNormal = vr_head.rotation;
 	}
 
