@@ -12,9 +12,9 @@ using Valve.VR;
 //[ExecuteInEditMode]
 public class VR_Overlay 
 {
-	public VR_ViveCamera keyboard_camera;
+	
 	public RenderTexture desktop_texture;
-	//public RenderTexture keyboard_texture;
+	public WebCamTexture webcam_texture;
 	private GameObject center;
 	private GameObject r1,r2,r3,r4,r5,l1,l2,l3,l4,l5;//right and left overlay game objects
 	private GameObject keyboard;
@@ -25,7 +25,7 @@ public class VR_Overlay
 	public bool antialias = false;//enable for curved overlay
 	public bool highquality = false;//enable for curved overlay
 	public float desktop_overlay_scale = 3.0f;          // size of overlay view
-	public float keyboard_overlay_scale = 2.0f;
+	public float keyboard_overlay_scale = 1.5f;
 	public float distance = 1.25f;		// distance from surface
 	public float alpha = 1.0f;          // opacity 0..1
 	public float zoom_step = 0.02f;
@@ -65,8 +65,6 @@ public class VR_Overlay
 	public void Create(string overlay_key, string overlay_name)
 	{
 
-		keyboard_camera = new VR_ViveCamera();
-		keyboard_camera.Create();
 
 		center = new GameObject("Center overlay");
 
@@ -83,6 +81,8 @@ public class VR_Overlay
 		l5 = new GameObject("l5 overlay"); l5.transform.parent = l4.transform;
 
 		keyboard = new GameObject("keyboard view overlay"); keyboard.transform.parent = center.transform;
+		keyboard.AddComponent<VR_WebCam>();//this is workaround to play the webcam in edit mode
+		
 
 		orientOverlayLocal(r5.transform, 1f);
 		orientOverlayLocal(r4.transform, 1f);
@@ -136,8 +136,9 @@ public class VR_Overlay
 			
 			/*...........CHECK ALL FOR ERRORS..................*/
 		}
-		
 
+		
+		
 		VR_Overlay.instance = this;
 	}
 
@@ -162,7 +163,7 @@ public class VR_Overlay
 				overlay.DestroyOverlay(handle_l5);
 
 				overlay.DestroyOverlay(handle_keyboard);
-				keyboard_camera.Destroy();
+				
 			}
 
 			handle = OpenVR.k_ulOverlayHandleInvalid;
@@ -194,8 +195,7 @@ public class VR_Overlay
 		Editor.DestroyImmediate(l5);
 		Editor.DestroyImmediate(keyboard);
 
-
-		VR_Overlay.instance = null;
+		
 	}
 
 	public void Update()
@@ -205,7 +205,7 @@ public class VR_Overlay
 		if (overlay == null)
 			return;
 
-		keyboard_camera.Update();
+		
 		updateKeyboardOverlay(handle_keyboard, ref textureBounds);
 
 		updateDesktopOverlay(handle, ref textureBounds, 0, 1);
@@ -348,9 +348,13 @@ public class VR_Overlay
 
 		if (overlay == null)
 			return;
+		
+		if(webcam_texture == null)
+			webcam_texture = keyboard.GetComponent<VR_WebCam>().webcam_texture;
 
-		if (keyboard_camera.texture != null)
+		if (webcam_texture != null)
 		{
+		
 			var error = overlay.ShowOverlay(handle);
 
 			if (error == EVROverlayError.InvalidHandle || error == EVROverlayError.UnknownOverlay)
@@ -361,7 +365,7 @@ public class VR_Overlay
 
 
 			var tex = new Texture_t();
-			tex.handle = keyboard_camera.texture.GetNativeTexturePtr();// desktop_texture.GetNativeTexturePtr();
+			tex.handle = webcam_texture.GetNativeTexturePtr();// desktop_texture.GetNativeTexturePtr();
 			//tex.eType = SteamVR.instance.textureType;
 			tex.eColorSpace = EColorSpace.Auto;
 
@@ -378,6 +382,9 @@ public class VR_Overlay
 			// Account for textures being upside-down in Unity.
 			textureBounds.vMin = 1.0f - textureBounds.vMin;
 			textureBounds.vMax = 1.0f - textureBounds.vMax;
+			textureBounds.uMin = 1.0f - textureBounds.uMin;
+			textureBounds.uMax = 1.0f - textureBounds.uMax;
+
 			overlay.SetOverlayTextureBounds(handle, ref textureBounds);
 			overlay.SetOverlayInputMethod(handle, inputMethod);
 		}
