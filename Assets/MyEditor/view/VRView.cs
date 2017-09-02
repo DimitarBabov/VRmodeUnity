@@ -11,6 +11,7 @@ using Valve.VR;
 #endif
 using UnityEditor;
 
+public delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 //[ExecuteInEditMode]
 sealed class VRView
 {
@@ -61,7 +62,10 @@ sealed class VRView
 
 	public void Enable()
 	{
+
+	
 		
+
 		if (Application.isPlaying)
 			return;
 
@@ -80,12 +84,7 @@ sealed class VRView
 		if (hmd == null)
 			hmd = OpenVR.Init(ref error, EVRApplicationType.VRApplication_Scene);//Make it VRApplication_Scene if go back 
 
-		//OVERLAYS
-		if (overlay == null)
-		{
-			overlay = new VR_Overlay();
-			overlay.Create("Desktop", "Desktop Overlay");
-		}
+		
 		
 		//VR camera
 		
@@ -94,6 +93,13 @@ sealed class VRView
 			vr_cam = new VR_CameraRig();
 			vr_cam.Create();
 			vr_cam.SetTexture();
+		}
+
+		//OVERLAYS
+		if (overlay == null)
+		{
+			overlay = new VR_Overlay();
+			overlay.Create("Desktop", "Desktop Overlay");
 		}
 
 		if (desktop == null)
@@ -154,8 +160,6 @@ sealed class VRView
 	
 	private void Update()
 	{
-
-
 		//copy desktop texture in overlay texture. This is neccesarry becasue desktop main texture is BGRA32 format and we need RGBA32
 		Graphics.Blit(desktop.main_texture, overlay.desktop_texture);
 		
@@ -222,7 +226,7 @@ sealed class VRView
 		isFrameGeneratorRunning = true;
 
 		//HackStart();
-		
+		//We generate frame every 15 milliseconds or 66 frames per second. This will be upgraded in future versions so we have at least 90 fps
 		timer = new Timer(15);
 		
 		timer.Elapsed += new System.Timers.ElapsedEventHandler(NextFrameReadyEvent);
@@ -252,42 +256,7 @@ sealed class VRView
 		
 		SendNotifyMessage(hMainWindow, 1741, IntPtr.Zero, IntPtr.Zero);
 	}
-	/*
-	public void HackStart()
-	{
-		HackStop();
-
-		string exePath = "Assets\\MyEditor\\Hack\\VrDesktopMirrorWorkaround.exe";
-		if (System.IO.File.Exists(exePath))
-		{
-			m_process = new System.Diagnostics.Process();
-			m_process.StartInfo.FileName = exePath;
-			m_process.StartInfo.CreateNoWindow = true;
-			m_process.StartInfo.UseShellExecute = true;
-			m_process.StartInfo.Arguments = hMainWindow.ToString();
-			m_process.Start();
-		}
-		else
-		{
-			Debug.Log("VR Desktop Mirror Hack exe not found: " + exePath);
-		}
-	}
 	
-	public void HackStop()
-	{
-
-
-		if (m_process != null)
-		{
-			if (m_process.HasExited == false)
-			{
-				m_process.Kill();
-			}
-		}
-		m_process = null;
-	}
-	
-	*/
 #endregion
 	public static VRView instance;
 
@@ -331,13 +300,13 @@ sealed class VRView
 	}
 
 
-	[MenuItem("VR Mode/Reposition VR camera %z", false)]
-	static void RepositionEditorVR()
+	[MenuItem("VR Mode/Reposition Desktop %z", false)]
+	static void RepositionDesktopOverlayVR()
 	{
 		Debug.Log("VR camera repositioned...");
-		VR_Overlay.instance.reposition(VR_CameraRig.instance.transform);
+		VR_Overlay.instance.RepositionOverlay();
 	}
-
+	/*
 	[MenuItem("VR Mode/Reposition VR camera %x", false)]
 	static void ZoomOutEditorVR()
 	{
@@ -350,7 +319,14 @@ sealed class VRView
 	{
 		Debug.Log("VR camera zoomed in...");
 		VR_Overlay.instance.ZoomIn(VR_CameraRig.instance.transform);
+	}*/
+
+	[MenuItem("VR Mode/Reposion VR Scene %x", false)]
+	static void RepositionSceneVR()
+	{
+		Debug.Log("VR head calibration...");
+		VR_CameraRig.instance.RepositionScene();
 	}
-	
+
 }
 #endif

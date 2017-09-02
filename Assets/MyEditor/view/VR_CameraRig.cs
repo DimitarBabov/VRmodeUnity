@@ -7,9 +7,7 @@ using Valve.VR;
 
 public class VR_CameraRig
 {
-	
-	private CVRSystem hmd;
-	
+	private CVRSystem hmd;	
 
 	TrackedDevicePose_t[] renderPoseArray = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
 	TrackedDevicePose_t[] gamePoseArray = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
@@ -22,6 +20,16 @@ public class VR_CameraRig
 	RenderTexture renderTextureRightEye;
 	Camera leftEyeCam;
 	Camera rightEyeCam;
+	Camera scene_cam;
+
+	//Default rotation arround 'Up' axis
+	float HeadOriginCalibratedYRotation = 0f;
+	//Default distance between the head camera and the monitor
+	float HeadToMonitorDist = 1f;
+	//Default head position
+	Vector3 HeadOriginCalibratedPos = Vector3.zero;
+
+
 	public Transform transform;
 	public int update_count = 0;
 	static public VR_CameraRig instance { get; private set; }
@@ -68,10 +76,14 @@ public class VR_CameraRig
 		rightEyeCam.targetTexture = renderTextureRightEye;
 		rightEyeCam.Render();
 		//Initialize the transforms
+		Camera[] cams = SceneView.GetAllSceneCameras();
+		scene_cam = cams[0];
 		UpdateTransform();
 
 		VR_CameraRig.instance = this;
 	}
+
+	
 
 	public void Destroy()
 	{
@@ -83,7 +95,8 @@ public class VR_CameraRig
 		Editor.DestroyImmediate(LeftEye);
 		Editor.DestroyImmediate(RightEye);
 		Editor.DestroyImmediate(Head);
-		
+
+
 		VR_CameraRig.instance = null;
 	}
 
@@ -95,11 +108,23 @@ public class VR_CameraRig
 			Debug.LogError("OpenVR system is not initialized");
 			return;
 		}
-
+		
 		SteamVR_Utils.RigidTransform pose_head = new SteamVR_Utils.RigidTransform(renderPoseArray[0].mDeviceToAbsoluteTracking);
-		Head.transform.localPosition = pose_head.pos;
-		Head.transform.localRotation = pose_head.rot;
 
+		
+		//1. Transform the head to the scene camera transform 
+		Head.transform.localPosition = scene_cam.transform.localPosition;
+		Head.transform.localRotation = scene_cam.transform.localRotation;
+
+		//2. Adjust to calibrated world position and Y rotation. 
+		Head.transform.localPosition = Head.transform.localPosition - HeadOriginCalibratedPos;
+		Head.transform.Rotate(Vector3.up, - HeadOriginCalibratedYRotation);
+		
+		//3.Transform the head to the relative moving headset every frame
+		Head.transform.localPosition =Head.transform.TransformPoint( pose_head.pos);
+		Head.transform.localRotation = Head.transform.localRotation * pose_head.rot;
+
+		transform = Head.transform; 
 
 		SteamVR_Utils.RigidTransform pose_left_to_head = new SteamVR_Utils.RigidTransform(hmd.GetEyeToHeadTransform(EVREye.Eye_Left));
 		SteamVR_Utils.RigidTransform pose_right_to_head = new SteamVR_Utils.RigidTransform(hmd.GetEyeToHeadTransform(EVREye.Eye_Right));
@@ -109,6 +134,24 @@ public class VR_CameraRig
 
 		rightEyeCam.transform.localPosition = Head.transform.TransformPoint(pose_right_to_head.pos);
 		rightEyeCam.transform.localRotation = Head.transform.localRotation * pose_right_to_head.rot;
+
+	}
+	/// <summary>
+	/// Used to Reposition scene in order to match the scene view at the given person position.
+	///The user needs to hold the headset in desired position and then call this function from unity menu VR Mode/Reposion VR Scene.
+	/// </summary>
+	public void RepositionScene()
+	{
+		if (hmd == null)
+		{
+			Debug.LogError("OpenVR system is not initialized. Can not calibrate head!");
+			return;
+		}
+
+		SteamVR_Utils.RigidTransform pose_head = new SteamVR_Utils.RigidTransform(renderPoseArray[0].mDeviceToAbsoluteTracking);
+		HeadOriginCalibratedYRotation= pose_head.rot.eulerAngles.y;
+		HeadOriginCalibratedPos = pose_head.pos;
+		HeadOriginCalibratedPos.z += HeadToMonitorDist;
 
 	}
 
@@ -175,7 +218,7 @@ public class VR_CameraRig
 		{
 			Debug.LogError("OpenVR compositor is not initialized");
 			return;
-		}
+		}		
 
 
 		leftEyeCam.Render();
@@ -200,4 +243,5 @@ public class VR_CameraRig
 			}
 		}
 	}
+
 }

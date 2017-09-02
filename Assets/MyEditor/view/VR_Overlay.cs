@@ -1,10 +1,4 @@
-﻿//======= Copyright (c) Valve Corporation, All rights reserved. ===============
-//
-// Purpose: Displays 2d content on a large virtual screen.
-//
-//=============================================================================
-
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEditor;
 using Valve.VR;
 
@@ -25,8 +19,9 @@ public class VR_Overlay
 	public bool antialias = false;//enable for curved overlay
 	public bool highquality = false;//enable for curved overlay
 	public float desktop_overlay_scale = 3.0f;          // size of overlay view
-	public float keyboard_overlay_scale = 1.5f;
-	public float distance = 1.25f;		// distance from surface
+	public float keyboard_overlay_scale = 2f;
+	public float distance_forward = 1.25f;      // distance from surface
+	public float distance_up = 0.0f;      
 	public float alpha = 1.0f;          // opacity 0..1
 	public float zoom_step = 0.02f;
 
@@ -34,6 +29,7 @@ public class VR_Overlay
 	public Vector2 mouseScale = new Vector2(1, 1);
 	public Vector2 curvedRange = new Vector2(1.5f, 1.5f);
 
+	
 	private bool m_zoom = false;
 	private Vector3 m_positionNormal;
 	private Quaternion m_rotationNormal;
@@ -61,11 +57,12 @@ public class VR_Overlay
 	private ulong handle_l4 = OpenVR.k_ulOverlayHandleInvalid;
 	private ulong handle_l5 = OpenVR.k_ulOverlayHandleInvalid;
 	private ulong handle_keyboard = OpenVR.k_ulOverlayHandleInvalid;
+	TrackedDevicePose_t[] renderPoseArray = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
+	TrackedDevicePose_t[] gamePoseArray = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
 
 	public void Create(string overlay_key, string overlay_name)
 	{
-
-
+		
 		center = new GameObject("Center overlay");
 
 		r1 = new GameObject("r1 overlay"); r1.transform.parent = center.transform; 
@@ -181,6 +178,7 @@ public class VR_Overlay
 
 			handle_keyboard = OpenVR.k_ulOverlayHandleInvalid;
 		}
+
 		
 		Editor.DestroyImmediate(center);
 		Editor.DestroyImmediate(r1);
@@ -200,12 +198,12 @@ public class VR_Overlay
 
 	public void Update()
 	{
-		var overlay = OpenVR.Overlay;
+		var overlay = OpenVR.Overlay;		
 
 		if (overlay == null)
 			return;
-
 		
+
 		updateKeyboardOverlay(handle_keyboard, ref textureBounds);
 
 		updateDesktopOverlay(handle, ref textureBounds, 0, 1);
@@ -232,37 +230,15 @@ public class VR_Overlay
 	{
 
 		var overlay = OpenVR.Overlay;
-
-		if (overlay == null)
-			return;
 		
-	
-		if (true/*Visible*/)
-		{
-			
+		if (overlay == null)
+			return;		
 
-			Vector3 positionDestination;
-			Quaternion rotationDestination;
+		
+		center.transform.position = m_positionNormal;
+		center.transform.rotation = m_rotationNormal;
 
-			if (m_zoom)
-			{
-				positionDestination = m_positionZoomed;
-				rotationDestination = m_rotationZoomed;
-			}
-			else
-			{
-				positionDestination = m_positionNormal;
-				rotationDestination = m_rotationNormal;
-			}
-
-			if (center.transform.position != positionDestination)
-				center.transform.position = positionDestination;
-
-
-			if (center.transform.rotation != rotationDestination)
-				center.transform.rotation =  rotationDestination;
-
-		}
+		
 
 		setOverlayTransform(handle,ref center);
 
@@ -284,7 +260,7 @@ public class VR_Overlay
 	
 	private void orientOverlayLocal(Transform overlay_transform,  float sign)
 	{
-		float overlay_length = desktop_overlay_scale / numOverlays;		
+		float overlay_length = desktop_overlay_scale / numOverlays;
 		overlay_transform.localPosition = new Vector3(sign * overlay_length, 0, 0);
 		overlay_transform.RotateAround(new Vector3(sign * overlay_length / 2f, 0, 0), new Vector3(0, 1, 0), sign * angle);
 	}
@@ -365,7 +341,7 @@ public class VR_Overlay
 
 
 			var tex = new Texture_t();
-			tex.handle = webcam_texture.GetNativeTexturePtr();// desktop_texture.GetNativeTexturePtr();
+			tex.handle = webcam_texture.GetNativeTexturePtr();
 			//tex.eType = SteamVR.instance.textureType;
 			tex.eColorSpace = EColorSpace.Auto;
 
@@ -376,9 +352,9 @@ public class VR_Overlay
 
 			textureBounds = new VRTextureBounds_t();
 			textureBounds.uMin = (0 + uvOffset.x) * uvOffset.z;
-			textureBounds.vMin = (1 + uvOffset.y) * uvOffset.w - 0.15f;
-			textureBounds.uMax = (1 + uvOffset.x) * uvOffset.z - 0.5f;
-			textureBounds.vMax = (0 + uvOffset.y) * uvOffset.w + 0.15f;
+			textureBounds.vMin = (1 + uvOffset.y) * uvOffset.w ;
+			textureBounds.uMax = (1 + uvOffset.x) * uvOffset.z;
+			textureBounds.vMax = (0 + uvOffset.y) * uvOffset.w;
 			// Account for textures being upside-down in Unity.
 			textureBounds.vMin = 1.0f - textureBounds.vMin;
 			textureBounds.vMax = 1.0f - textureBounds.vMax;
@@ -402,29 +378,41 @@ public class VR_Overlay
 		var t = rigid_transform.ToHmdMatrix34();
 		overlay.SetOverlayTransformAbsolute(handle, ETrackingUniverseOrigin.TrackingUniverseStanding, ref t);
 	}
-
+	/*
 	public void ZoomIn(Transform vr_cam_head)
 	{
 		m_zoom = true;
-		distance -= zoom_step;
-		m_positionZoomed = vr_cam_head.position + vr_cam_head.rotation * new Vector3(0, 0, distance);
+		distance_forward -= zoom_step;
+		m_positionZoomed = vr_cam_head.position + vr_cam_head.rotation * new Vector3(0, 0, distance_forward);
 		m_rotationZoomed = vr_cam_head.rotation;
 	}
 
 	public void ZoomOut(Transform vr_cam_head)
 	{
 		m_zoom = true;
-		distance += zoom_step;
-		m_positionZoomed = vr_cam_head.position + vr_cam_head.rotation * new Vector3(0, 0, distance);
+		distance_forward += zoom_step;
+		m_positionZoomed = vr_cam_head.position + vr_cam_head.rotation * new Vector3(0, 0, distance_forward);
 		m_rotationZoomed = vr_cam_head.rotation;
 	}
-
-	public void reposition(Transform vr_head)
+	*/
+	public void RepositionOverlay()
 	{
+		SteamVR_Utils.RigidTransform vr_head = GetPoseHead();
 		m_zoom = false;
-		m_positionNormal = vr_head.position + vr_head.rotation * new Vector3(0, 0, distance);
-		m_rotationNormal = vr_head.rotation;
+
+		m_positionNormal = vr_head.pos + vr_head.rot * new Vector3(0, distance_up, distance_forward);
+		m_rotationNormal = vr_head.rot;
 	}
 
+	public SteamVR_Utils.RigidTransform GetPoseHead()
+	{
+		var compositor = OpenVR.Compositor;
+
+		if (compositor!=null)
+			compositor.GetLastPoses(renderPoseArray, gamePoseArray);
+
+		SteamVR_Utils.RigidTransform pose_head = new SteamVR_Utils.RigidTransform(renderPoseArray[0].mDeviceToAbsoluteTracking);
+		return pose_head;
+	}
 }
 
